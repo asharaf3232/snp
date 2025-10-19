@@ -8,7 +8,7 @@ import time
 import asyncio
 import logging
 from typing import Dict, List, Any, Tuple
-
+import websockets
 from dotenv import load_dotenv
 from web3 import Web3, AsyncWeb3
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
@@ -584,33 +584,34 @@ async def main():
     
     try:
         if NODE_URL and NODE_URL.startswith("wss://"):
-            logging.info("🔌 الاتصال باستخدام Websocket...")
-            # --- ✅ الاختبار الحاسم: إضافة websocket_kwargs لتعطيل SSL ---
-            provider = AsyncWeb3.WebSocketProvider(
-                NODE_URL, 
-                websocket_kwargs={'ssl': False}
-            )
-            # ----------------------------------------------------------------
+            logging.info("🔌 الاتصال بالطريقة اليدوية القوية...")
+            # --- ✅ الحل الجذري: إنشاء الاتصال يدوياً ثم تسليمه لـ web3.py ---
+            connection = await websockets.connect(NODE_URL)
+            provider = AsyncWeb3.WebSocketProvider.from_existing(connection)
+            # -------------------------------------------------------------------
+            w3 = AsyncWeb3(provider)
+            # بما أن الاتصال تم يدوياً بنجاح، is_connected ستكون true
+            if not await w3.is_connected():
+                 raise Exception("فشل الاتصال حتى بالطريقة اليدوية!")
+
         elif NODE_URL:
+            # (هذا الجزء يبقى كما هو لحالات HTTP)
             logging.info("📡 الاتصال باستخدام HTTP...")
             provider = AsyncWeb3.HTTPProvider(NODE_URL)
+            w3 = AsyncWeb3(provider)
+            if not await w3.is_connected():
+                 raise Exception("فشل اتصال HTTP!")
         else:
             logging.critical("❌ متغير NODE_URL غير موجود أو فارغ.")
             return
 
-        w3 = AsyncWeb3(provider)
-        is_connected = await asyncio.wait_for(w3.is_connected(), timeout=10.0)
-        if not is_connected:
-            logging.critical("❌ فشل التحقق من الاتصال بعد إنشائه.")
-            return
-
     except Exception as e:
-        logging.critical(f"❌ حدث خطأ غير متوقع أثناء محاولة الاتصال بالـ Node: {e}")
+        logging.critical(f"❌ حدث خطأ فادح أثناء محاولة الاتصال بالـ Node: {e}")
         return
 
-    logging.info("✅ تم الاتصال بالشبكة بنجاح!")
-    
-    # ... (باقي الكود يبقى كما هو)
+    logging.info("✅✅✅ نجح الاتصال أخيراً! تم تجاوز المشكلة. ✅✅✅")
+
+    # --- باقي الكود يبقى كما هو تماماً ---
     nonce_manager = مدير_الـNonce(w3, WALLET_ADDRESS)
     await nonce_manager.initialize()
     guardian = الحارس(w3, nonce_manager, None, bot_state)
@@ -629,7 +630,7 @@ async def main():
     watcher_task = asyncio.create_task(watcher.استمع_للمجمعات_الجديدة(new_pool_handler))
     health_check_task = asyncio.create_task(watcher.check_connection_periodically())
     await asyncio.gather(telegram_task, guardian_task, watcher_task, health_check_task)
-
+  
 if __name__ == "__main__":
     try:
         asyncio.run(main())
