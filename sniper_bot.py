@@ -566,19 +566,14 @@ async def process_new_token(pair_address, token_address, verifier, sniper, guard
              await telegram_if.send_message(f"⚪️ <b>تم تجاهل عملة</b>\n\n<code>{token_address}</code>\n\n<b>السبب:</b> {reason}")
 
 async def main():
-    # -- السطر المضاف هنا للتحقق من الرابط الذي يستخدمه البوت --
     logging.info(f"DEBUG: NODE_URL being used is: {os.getenv('NODE_URL')}")
-    # -----------------------------------------------------------
-
     logging.info("--- بدأ تشغيل بوت صياد الدرر (v9.0 نسخة Web3 v7+) ---")
     
     bot_state = {
-        'is_paused': False,
-        'DEBUG_MODE': os.getenv('DEBUG_MODE', 'False').lower() in ('true', '1', 't'),
+        'is_paused': False, 'DEBUG_MODE': os.getenv('DEBUG_MODE', 'False').lower() in ('true', '1', 't'),
         'BUY_AMOUNT_BNB': float(os.getenv('BUY_AMOUNT_BNB', '0.01')),
         'GAS_PRICE_TIP_GWEI': int(os.getenv('GAS_PRICE_TIP_GWEI', '1')),
-        'SLIPPAGE_LIMIT': int(os.getenv('SLIPPAGE_LIMIT', '49')),
-        'GAS_LIMIT': int(os.getenv('GAS_LIMIT', '600000')),
+        'SLIPPAGE_LIMIT': int(os.getenv('SLIPPAGE_LIMIT', '49')), 'GAS_LIMIT': int(os.getenv('GAS_LIMIT', '600000')),
         'MINIMUM_LIQUIDITY_BNB': float(os.getenv('MINIMUM_LIQUIDITY_BNB', '5.0')),
         'TAKE_PROFIT_THRESHOLD_1': int(os.getenv('TAKE_PROFIT_THRESHOLD_1', '100')),
         'SELL_PERCENTAGE_1': int(os.getenv('SELL_PERCENTAGE_1', '50')),
@@ -590,37 +585,37 @@ async def main():
     try:
         if NODE_URL and NODE_URL.startswith("wss://"):
             logging.info("🔌 الاتصال باستخدام Websocket...")
-            provider = AsyncWeb3.WebSocketProvider(NODE_URL)
+            # --- ✅ الاختبار الحاسم: إضافة websocket_kwargs لتعطيل SSL ---
+            provider = AsyncWeb3.WebSocketProvider(
+                NODE_URL, 
+                websocket_kwargs={'ssl': False}
+            )
+            # ----------------------------------------------------------------
         elif NODE_URL:
             logging.info("📡 الاتصال باستخدام HTTP...")
             provider = AsyncWeb3.HTTPProvider(NODE_URL)
         else:
-            logging.critical("❌ متغير NODE_URL غير موجود أو فارغ. تأكد من إعداده بشكل صحيح.")
+            logging.critical("❌ متغير NODE_URL غير موجود أو فارغ.")
             return
 
         w3 = AsyncWeb3(provider)
-
         is_connected = await asyncio.wait_for(w3.is_connected(), timeout=10.0)
         if not is_connected:
-            logging.critical("❌ فشل التحقق من الاتصال بعد إنشائه. الرابط قد يكون غير صحيح.")
+            logging.critical("❌ فشل التحقق من الاتصال بعد إنشائه.")
             return
 
-    except asyncio.TimeoutError:
-        logging.critical("❌ انتهت مهلة الاتصال (Timeout) بالـ Node. تأكد أن الرابط صحيح وأن الشبكة/الجدار الناري يسمح بالاتصال.")
-        return
     except Exception as e:
         logging.critical(f"❌ حدث خطأ غير متوقع أثناء محاولة الاتصال بالـ Node: {e}")
         return
 
     logging.info("✅ تم الاتصال بالشبكة بنجاح!")
-
+    
+    # ... (باقي الكود يبقى كما هو)
     nonce_manager = مدير_الـNonce(w3, WALLET_ADDRESS)
     await nonce_manager.initialize()
-    
     guardian = الحارس(w3, nonce_manager, None, bot_state)
     telegram_interface = واجهة_التليجرام(TELEGRAM_BOT_TOKEN, TELEGRAM_ADMIN_CHAT_ID, bot_state, guardian)
     guardian.telegram = telegram_interface
-
     watcher = الراصد(w3, telegram_interface)
     verifier = المدقق(w3, telegram_interface, bot_state)
     sniper = القناص(w3, nonce_manager, telegram_interface, bot_state)
@@ -629,12 +624,10 @@ async def main():
         asyncio.create_task(process_new_token(pair, token, verifier, sniper, guardian, bot_state, telegram_interface))
 
     logging.info("🚀 البوت جاهز على خط الانطلاق...")
-    
     telegram_task = asyncio.create_task(telegram_interface.run())
     guardian_task = asyncio.create_task(guardian.monitor_trades())
     watcher_task = asyncio.create_task(watcher.استمع_للمجمعات_الجديدة(new_pool_handler))
     health_check_task = asyncio.create_task(watcher.check_connection_periodically())
-    
     await asyncio.gather(telegram_task, guardian_task, watcher_task, health_check_task)
 
 if __name__ == "__main__":
