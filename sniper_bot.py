@@ -1,5 +1,5 @@
 # =================================================================
-# صياد الدرر: v5.1 (نسخة الشفافية الكاملة)
+# صياد الدرر: v5.2 (مع نظام الفحص الصحي والإنذار التلقائي)
 # =================================================================
 
 import os
@@ -40,33 +40,21 @@ ERC20_ABI = json.loads('[{"constant":true,"inputs":[],"name":"decimals","outputs
 # 3. الإعدادات المركزية
 # =================================================================
 load_dotenv()
-
-# --- إعدادات الاتصال بالشبكة (BSC) ---
 NODE_URL = os.getenv('NODE_URL')
-if not NODE_URL:
-    raise ValueError("❌ يجب تعيين NODE_URL في ملف .env!")
-
-# --- إعدادات المحفظة ---
 WALLET_ADDRESS = os.getenv('WALLET_ADDRESS')
 PRIVATE_KEY = os.getenv('PRIVATE_KEY', '')
-
-# --- إعدادات التليجرام ---
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 TELEGRAM_ADMIN_CHAT_ID = os.getenv('TELEGRAM_ADMIN_CHAT_ID')
-
-# --- العناوين الثابتة ---
 ROUTER_ADDRESS = os.getenv('ROUTER_ADDRESS', '0x10ED43C718714eb63d5aA57B78B54704E256024E')
 FACTORY_ADDRESS = os.getenv('FACTORY_ADDRESS', '0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73')
 WBNB_ADDRESS = "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c"
 
-# التحقق من المتغيرات الإلزامية
-if not WALLET_ADDRESS or not PRIVATE_KEY or not TELEGRAM_BOT_TOKEN or not TELEGRAM_ADMIN_CHAT_ID:
-    raise ValueError("❌ تأكد من تعيين كل من: WALLET_ADDRESS, PRIVATE_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_ADMIN_CHAT_ID في .env!")
-
+if not all([NODE_URL, WALLET_ADDRESS, PRIVATE_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_ADMIN_CHAT_ID]):
+    raise ValueError("❌ تأكد من تعيين كل المتغيرات المطلوبة في ملف .env!")
 logging.info("✅ تم تحميل الإعدادات المحصّنة بنجاح.")
 
 # =================================================================
-# 4. فئة واجهة التليجرام (مع لوحة تحكم ثابتة)
+# 4. فئة واجهة التليجرام (كاملة ومحدثة)
 # =================================================================
 (SELECTING_SETTING, TYPING_VALUE) = range(2)
 
@@ -112,23 +100,9 @@ class واجهة_التليجرام:
             logging.error(f"❌ خطأ في إرسال رسالة تليجرام: {e}")
 
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        # هذا الكائن `update` يمكن أن يكون من نوع `Update` (قادم من أمر) أو `Message` (قادم من رد).
-        # هذا التعديل يعالج كلتا الحالتين لمنع الأخطاء.
-        message_to_reply = update
-        chat_id = None
-
-        if hasattr(update, 'effective_chat'):  # إذا كان الكائن هو Update
-            chat_id = update.effective_chat.id
-            message_to_reply = update.message
-        elif hasattr(update, 'chat'):  # إذا كان الكائن هو Message
-            chat_id = update.chat.id
-        else:
-            logging.warning("تم استدعاء دالة البدء بكائن غير معروف.")
-            return
-
-        if str(chat_id) != self.admin_id:
-            return
-
+        message_to_reply = update.message if hasattr(update, 'message') and update.message else update
+        chat_id = update.effective_chat.id if hasattr(update, 'effective_chat') else message_to_reply.chat.id
+        if str(chat_id) != self.admin_id: return
         await message_to_reply.reply_text(
             '<b>أهلاً بك في مركز قيادة صياد الدرر!</b>',
             reply_markup=self._get_main_keyboard(),
@@ -158,7 +132,7 @@ class واجهة_التليجرام:
     async def show_status(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         status_text = "<b>📊 الحالة الحالية للبوت:</b>\n\n"
         status_text += f"<b>الحالة:</b> {'موقوف مؤقتاً ⏸️' if self.bot_state['is_paused'] else 'نشط ▶️'}\n"
-        status_text += f"<b>وضع التصحيح:</b> {'فعّال 🟢' if self.bot_state['DEBUG_MODE'] else 'غير فعّال ⚪️'}\n"
+        status_text += f"<b>وضع التصحيح:</b> {'فعّال 🟢' if self.bot_state.get('DEBUG_MODE', False) else 'غير فعّال ⚪️'}\n"
         status_text += "-----------------------------------\n"
         if not self.guardian.active_trades:
             status_text += "ℹ️ لا توجد صفقات نشطة حالياً.\n"
@@ -178,23 +152,20 @@ class واجهة_التليجرام:
         status_text += f"- الهدف 1: بيع {s['SELL_PERCENTAGE_1']}% عند ربح {s['TAKE_PROFIT_THRESHOLD_1']}%\n"
         status_text += f"- الهدف 2: بيع {s['SELL_PERCENTAGE_2']}% عند ربح {s['TAKE_PROFIT_THRESHOLD_2']}%\n"
         status_text += f"- وقف الخسارة: {s['STOP_LOSS_THRESHOLD']}%\n"
-
         await update.message.reply_text(status_text, parse_mode=ParseMode.HTML)
 
     async def toggle_pause(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         self.bot_state['is_paused'] = not self.bot_state['is_paused']
         status = "موقوف مؤقتاً ⏸️" if self.bot_state['is_paused'] else "نشط ▶️"
         await self.send_message(f"ℹ️ حالة قنص العملات الجديدة الآن: <b>{status}</b>")
-        await self.start(update, context)
+        await self.start(update.message, context)
 
     async def toggle_debug_mode(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """يفعل أو يعطل وضع التصحيح ويرسل رسالة تأكيد."""
         self.bot_state['DEBUG_MODE'] = not self.bot_state.get('DEBUG_MODE', False)
         status = "فعّال 🟢" if self.bot_state['DEBUG_MODE'] else "غير فعّال ⚪️"
         logging.info(f"⚙️ تم تغيير وضع التصحيح إلى: {status}")
         await self.send_message(f"ℹ️ وضع التصحيح الآن: <b>{status}</b>")
-        # إعادة إرسال القائمة الرئيسية لإظهار الزر الجديد
-        await self.start(update, context)
+        await self.start(update.message, context)
 
     async def show_sell_options(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not self.guardian.active_trades:
@@ -208,11 +179,9 @@ class واجهة_التليجرام:
             with open("sniper_bot.log", "r", encoding='utf-8') as f:
                 lines = f.readlines()[-20:]
                 log_data = "".join(lines)
-                if not log_data:
-                    log_data = "ملف السجل فارغ."
+                if not log_data: log_data = "ملف السجل فارغ."
         except FileNotFoundError:
             log_data = "ملف السجل لم يتم إنشاؤه بعد."
-        
         await update.message.reply_text(f"<b>🔬 آخر 20 سطراً من سجل التشخيص:</b>\n\n<pre>{log_data}</pre>", parse_mode=ParseMode.HTML)
 
     async def settings_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -255,28 +224,24 @@ class واجهة_التليجرام:
     async def set_new_value(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         setting_key = context.user_data.pop('setting_to_change', None)
         if not setting_key:
-            await self.start(update, context)
+            await self.start(update.message, context)
             return ConversationHandler.END
 
         new_value_str = update.message.text
         try:
             current_value = self.bot_state[setting_key]
-            if isinstance(current_value, float):
-                new_value = float(new_value_str)
-            else:
-                new_value = int(new_value_str)
-
+            if isinstance(current_value, float): new_value = float(new_value_str)
+            else: new_value = int(new_value_str)
             self.bot_state[setting_key] = new_value
             await update.message.reply_text(f"✅ تم تحديث {setting_key} إلى: {new_value}")
             logging.info(f"⚙️ تم تغيير {setting_key} ديناميكياً إلى {new_value}.")
         except (ValueError, KeyError):
             await update.message.reply_text("❌ قيمة غير صالحة. يرجى إدخال رقم صحيح.")
-        
-        await self.start(update, context)
+        await self.start(update.message, context)
         return ConversationHandler.END
 
     async def run(self):
-        await self.send_message("✅ <b>تم تشغيل بوت صياد الدرر (v5.1) بنجاح!</b>")
+        await self.send_message("✅ <b>تم تشغيل بوت صياد الدرر (v5.2) بنجاح!</b>")
         await self.application.initialize()
         await self.application.start()
         await self.application.updater.start_polling()
@@ -312,10 +277,26 @@ class مدير_الـNonce:
             return current_nonce
 
 class الراصد:
-    def __init__(self, w3: AsyncWeb3):
+    def __init__(self, w3: AsyncWeb3, telegram_interface: "واجهة_التليجرام"):
         self.w3 = w3
+        self.telegram = telegram_interface
         self.factory_contract = self.w3.eth.contract(address=Web3.to_checksum_address(FACTORY_ADDRESS), abi=FACTORY_ABI)
-        logging.info("✅ الراصد متصل وجاهز للاستماع.")
+        logging.info("✅ الراصد متصل وجاهز للاستماع والفحص الصحي.")
+    
+    async def check_connection_periodically(self):
+        """[ترقية] يتحقق بشكل دوري من الاتصال ويرسل إنذاراً عند الفشل."""
+        while True:
+            await asyncio.sleep(60) # انتظر 60 ثانية قبل الفحص
+            try:
+                await asyncio.wait_for(self.w3.eth.block_number, timeout=15.0)
+                # logging.info("[نبض القلب] الاتصال بالشبكة سليم.") # يمكن إلغاء التعليق لرؤية الفحص في السجل
+            except asyncio.TimeoutError:
+                logging.critical("🚨 [فحص صحي] فشل الاتصال بالشبكة (انتهت المهلة).")
+                await self.telegram.send_message("🚨 <b>انقطاع الاتصال!</b> 🚨\n\nفشل الاتصال بعقدة البلوك تشين (انتهت المهلة). سيستمر البوت في محاولة إعادة الاتصال تلقائياً.")
+            except Exception as e:
+                logging.critical(f"🚨 [فحص صحي] خطأ فادح في الاتصال بالشبكة: {e}")
+                await self.telegram.send_message(f"🚨 <b>انقطاع الاتصال!</b> 🚨\n\nحدث خطأ فادح في الاتصال: {e}\n\nسيستمر البوت في محاولة إعادة الاتصال تلقائياً.")
+
     async def استمع_للمجمعات_الجديدة(self, handler_func: callable):
         event_filter = await self.factory_contract.events.PairCreated.create_filter(from_block='latest')
         logging.info("👂 بدء الاستماع لحدث PairCreated...")
@@ -346,7 +327,7 @@ class المدقق:
         self.telegram = telegram_interface
         self.bot_state = bot_state
         logging.info("✅ المدقق جاهز (مع فلترة سيولة ومحاكاة بيع).")
-        
+    
     async def فحص_أولي_سريع(self, pair_address: str) -> Tuple[bool, float]:
         logging.info(f"   [فحص سريع] التحقق من سيولة المجمع: {pair_address}")
         try:
@@ -364,7 +345,7 @@ class المدقق:
                 return False, wbnb_reserve
         except Exception as e:
             logging.error(f"   [فحص سريع] ⚠️ خطأ أثناء فحص السيولة: {e}")
-            return False, 0.0
+            return False, 0
 
     async def محاكاة_عملية_بيع(self, token_address: str) -> Tuple[bool, str]:
         logging.info(f"   [محاكاة البيع] التحقق من إمكانية بيع {token_address}")
@@ -377,18 +358,18 @@ class المدقق:
             logging.info("   [محاكاة البيع] ✅ نجحت المحاكاة. العملة قابلة للبيع.")
             return True, "العملة قابلة للبيع"
         except Exception as e:
-            error_message = f"فشلت المحاكاة: {e}"
-            logging.warning(f"   [محاكاة البيع] 🚨🚨🚨 {error_message}")
-            return False, "فخ عسل (Honeypot)"
-
+            error_message = str(e)
+            logging.warning(f"   [محاكاة البيع] 🚨🚨🚨 فشلت المحاكاة! على الأغلب Honeypot. الخطأ: {error_message}")
+            return False, error_message
+    
     async def فحص_شامل(self, pair_address: str, token_address: str) -> Tuple[bool, str]:
         liquidity_passed, wbnb_reserve = await self.فحص_أولي_سريع(pair_address)
         if not liquidity_passed:
             return False, f"سيولة غير كافية ({wbnb_reserve:.2f} BNB)"
         
-        sell_sim_passed, reason = await self.محاكاة_عملية_بيع(token_address)
+        sell_sim_passed, error_msg = await self.محاكاة_عملية_بيع(token_address)
         if not sell_sim_passed:
-            return False, reason
+            return False, f"فخ عسل (Honeypot) - {error_msg}"
             
         return True, "اجتاز كل الفحوصات"
 
@@ -448,7 +429,6 @@ class القناص:
             signed_tx = self.account.sign_transaction(tx)
             tx_hash = await self.w3.eth.send_raw_transaction(signed_tx.rawTransaction)
             logging.info(f"   هاش معاملة الشراء: {tx_hash.hex()}")
-            
             receipt = await self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=180)
 
             if receipt['status'] == 1:
@@ -554,7 +534,6 @@ class الحارس:
                     trade['current_profit'] = -100; continue
                 profit = ((price - trade["buy_price"]) / trade["buy_price"]) * 100 if trade["buy_price"] > 0 else 0
                 trade['current_profit'] = profit
-                # logging.info(f"   [مراقبة] {trade['token_address'][:10]}.. | الربح: {profit:.2f}%")
                 if not trade["tp1_triggered"] and profit >= self.bot_state['TAKE_PROFIT_THRESHOLD_1']:
                     trade["tp1_triggered"] = True
                     logging.info(f"🎯 [الحارس] تفعيل الهدف الأول للربح لـ {trade['token_address']}")
@@ -577,7 +556,6 @@ async def process_new_token(pair_address, token_address, verifier, sniper, guard
     if bot_state['is_paused']:
         logging.info(f"   [تجاهل] تم تجاهل {token_address} لأن القنص موقوف مؤقتاً.")
         return
-
     logging.info(f"\n[مهمة جديدة] بدأت معالجة العملة: {token_address}")
     
     passed, reason = await verifier.فحص_شامل(pair_address, token_address)
@@ -588,14 +566,12 @@ async def process_new_token(pair_address, token_address, verifier, sniper, guard
         if trade_result.get("success"):
             guardian.add_trade(trade_result)
     else:
-        # هنا تكمن الشفافية الجديدة
         logging.warning(f"🔻 [مهمة منتهية] تم تجاهل {token_address} (السبب: {reason}).")
-        # أرسل رسالة تليجرام فقط إذا كان وضع التصحيح فعالاً
         if bot_state.get('DEBUG_MODE', False):
              await telegram_if.send_message(f"⚪️ <b>تم تجاهل عملة</b>\n\n<code>{token_address}</code>\n\n<b>السبب:</b> {reason}")
 
 async def main():
-    logging.info("--- بدأ تشغيل بوت صياد الدرر (v5.1 نسخة الشفافية الكاملة) ---")
+    logging.info("--- بدأ تشغيل بوت صياد الدرر (v5.2 نسخة الفحص الصحي) ---")
     
     bot_state = {
         'is_paused': False,
@@ -612,22 +588,18 @@ async def main():
         'STOP_LOSS_THRESHOLD': int(os.getenv('STOP_LOSS_THRESHOLD', '-50')),
     }
     
-    if bot_state['DEBUG_MODE']:
-        logging.info("🟢 وضع التصحيح (Debug Mode) فعال. سيتم إرسال جميع سجلات التجاهل.")
-
     w3 = AsyncWeb3(AsyncHTTPProvider(NODE_URL))
-    is_connected = await w3.is_connected()
-    if not is_connected:
-        logging.critical("❌ لا يمكن الاتصال بالشبكة. يتم الخروج."); return
+    if not await w3.is_connected():
+        logging.critical("❌ لا يمكن الاتصال بالشبكة عند البدء. يتم الخروج."); return
 
     nonce_manager = مدير_الـNonce(w3, WALLET_ADDRESS)
     await nonce_manager.initialize()
     
-    guardian = الحارس(w3, nonce_manager, None, bot_state)
+    guardian = الحارس(w3, nonce_manager, None, bot_state) # سيتم ربط التليجرام لاحقاً
     telegram_interface = واجهة_التليجرام(TELEGRAM_BOT_TOKEN, TELEGRAM_ADMIN_CHAT_ID, bot_state, guardian)
     guardian.telegram = telegram_interface
 
-    watcher = الراصد(w3)
+    watcher = الراصد(w3, telegram_interface)
     verifier = المدقق(w3, telegram_interface, bot_state)
     sniper = القناص(w3, nonce_manager, telegram_interface, bot_state)
     
@@ -639,8 +611,9 @@ async def main():
     telegram_task = asyncio.create_task(telegram_interface.run())
     guardian_task = asyncio.create_task(guardian.monitor_trades())
     watcher_task = asyncio.create_task(watcher.استمع_للمجمعات_الجديدة(new_pool_handler))
+    health_check_task = asyncio.create_task(watcher.check_connection_periodically())
     
-    await asyncio.gather(telegram_task, guardian_task, watcher_task)
+    await asyncio.gather(telegram_task, guardian_task, watcher_task, health_check_task)
 
 if __name__ == "__main__":
     try:
