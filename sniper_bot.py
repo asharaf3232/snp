@@ -295,9 +295,9 @@ class الراصد:
             try:
                 new_entries = await self.w3.eth.get_filter_changes(event_filter.filter_id)
                 for event in new_entries:
-                    pair_address = event.args.pair
-                    token0 = event.args.token0
-                    token1 = event.args.token1
+                    pair_address = event['args']['pair']
+                    token0 = event['args']['token0']
+                    token1 = event['args']['token1']
                     new_token = token1 if token0.lower() == WBNB_ADDRESS.lower() else token0
                     logging.info(f"🔔 تم اكتشاف مجمع جديد: {pair_address} | العملة: {new_token}")
                     asyncio.create_task(handler_func(pair_address, new_token))
