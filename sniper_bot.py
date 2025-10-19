@@ -1,5 +1,5 @@
 # =================================================================
-# صياد الدرر: v7.2 (الإصلاح النهائي والحقيقي لـ Web3 v7)
+# صياد الدرر: v7.3 (الإصلاح النهائي والحقيقي لـ Web3 v7)
 # =================================================================
 
 import os
@@ -10,9 +10,11 @@ import logging
 from typing import Dict, List, Any, Tuple
 
 from dotenv import load_dotenv
-# --- [التصحيح النهائي والحقيقي هنا] ---
+# --- [التصحيح النهائي والحاسم هنا] ---
 # تم تعديل الكود بالكامل ليتوافق مع البنية الجديدة لمكتبة web3 (v7+)
 from web3 import Web3, AsyncWeb3
+from web3.providers.async_http import AsyncHTTPProvider
+from web3.providers.websocket import WebsocketProviderV2
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import (Application, CommandHandler, CallbackQueryHandler, 
                           ContextTypes, ConversationHandler, MessageHandler, filters)
@@ -243,7 +245,7 @@ class واجهة_التليجرام:
         return ConversationHandler.END
 
     async def run(self):
-        await self.send_message("✅ <b>تم تشغيل بوت صياد الدرر (v7.2) بنجاح!</b>")
+        await self.send_message("✅ <b>تم تشغيل بوت صياد الدرر (v7.3) بنجاح!</b>")
         await self.application.initialize()
         await self.application.start()
         await self.application.updater.start_polling()
@@ -568,7 +570,7 @@ async def process_new_token(pair_address, token_address, verifier, sniper, guard
              await telegram_if.send_message(f"⚪️ <b>تم تجاهل عملة</b>\n\n<code>{token_address}</code>\n\n<b>السبب:</b> {reason}")
 
 async def main():
-    logging.info("--- بدأ تشغيل بوت صياد الدرر (v7.2 نسخة Web3 v7+) ---")
+    logging.info("--- بدأ تشغيل بوت صياد الدرر (v7.3 نسخة Web3 v7+) ---")
     
     bot_state = {
         'is_paused': False,
@@ -588,10 +590,12 @@ async def main():
     # --- الترقية النهائية هنا (متوافقة مع v7+) ---
     if NODE_URL.startswith("wss://"):
         logging.info("🔌 الاتصال باستخدام Websocket...")
-        w3 = AsyncWeb3(AsyncWeb3.AsyncWebsocketProvider(NODE_URL))
+        provider = await WebsocketProviderV2.create(NODE_URL)
+        w3 = AsyncWeb3(provider)
     else:
         logging.info("📡 الاتصال باستخدام HTTP...")
-        w3 = AsyncWeb3(AsyncWeb3.AsyncHTTPProvider(NODE_URL))
+        provider = AsyncHTTPProvider(NODE_URL)
+        w3 = AsyncWeb3(provider)
 
 
     if not await w3.is_connected():
