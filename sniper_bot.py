@@ -1,5 +1,5 @@
 # =================================================================
-# صياد الدرر: v4.7.1 (النسخة النهائية المستقرة مع إصلاح الراصد)
+# صياد الدرر: v4.7 (النسخة النهائية المستقرة) - محدث لـ AsyncWeb3 v6+
 # =================================================================
 
 import os
@@ -12,7 +12,7 @@ from typing import Dict, List, Any
 from dotenv import load_dotenv
 from web3 import Web3, AsyncWeb3, AsyncHTTPProvider
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
-from telegram.ext import (Application, CommandHandler, CallbackQueryHandler,
+from telegram.ext import (Application, CommandHandler, CallbackQueryHandler, 
                           ContextTypes, ConversationHandler, MessageHandler, filters)
 from telegram.constants import ParseMode
 
@@ -76,7 +76,7 @@ class واجهة_التليجرام:
         self.admin_id = admin_id
         self.bot_state = bot_state
         self.guardian = guardian_ref
-
+        
         settings_conv_handler = ConversationHandler(
             entry_points=[MessageHandler(filters.Regex('^⚙️ الإعدادات$'), self.settings_menu)],
             states={
@@ -148,7 +148,7 @@ class واجهة_التليجرام:
             for trade in self.guardian.active_trades:
                 profit = trade.get('current_profit', 0)
                 status_text += f"<b>- <code>{trade['token_address']}</code>:</b> {profit:.2f}%\n"
-
+        
         status_text += "-----------------------------------\n"
         status_text += "<b>⚙️ إعدادات التداول:</b>\n"
         s = self.bot_state
@@ -184,7 +184,7 @@ class واجهة_التليجرام:
                     log_data = "ملف السجل فارغ."
         except FileNotFoundError:
             log_data = "ملف السجل لم يتم إنشاؤه بعد."
-
+        
         await update.message.reply_text(f"<b>🔬 آخر 20 سطراً من سجل التشخيص:</b>\n\n<pre>{log_data}</pre>", parse_mode=ParseMode.HTML)
 
     async def settings_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -209,7 +209,7 @@ class واجهة_التليجرام:
         await query.answer()
         setting_key = query.data.replace('change_', '')
         context.user_data['setting_to_change'] = setting_key
-
+        
         prompts = {
             "BUY_AMOUNT_BNB": "يرجى إرسال مبلغ الشراء الجديد بالـ BNB (مثال: 0.01):",
             "GAS_PRICE_TIP_GWEI": "يرجى إرسال إكرامية الغاز الجديدة بالـ Gwei (مثال: 1):",
@@ -243,12 +243,12 @@ class واجهة_التليجرام:
             logging.info(f"⚙️ تم تغيير {setting_key} ديناميكياً إلى {new_value}.")
         except (ValueError, KeyError):
             await update.message.reply_text("❌ قيمة غير صالحة. يرجى إدخال رقم صحيح.")
-
+        
         await self.start(update, context)
         return ConversationHandler.END
 
     async def run(self):
-        await self.send_message("✅ <b>تم تشغيل بوت صياد الدرر (v4.7) بنجاح!</b>")
+        await self.send_message("✅ <b>تم تشغيل بوت صياد الدرر (v4.6) بنجاح!</b>")
         await self.application.initialize()
         await self.application.start()
         await self.application.updater.start_polling()
@@ -295,11 +295,6 @@ class الراصد:
             try:
                 new_entries = await self.w3.eth.get_filter_changes(event_filter.filter_id)
                 for event in new_entries:
-                    # --- التحصين: التحقق من سلامة الحدث قبل المعالجة ---
-                    if 'args' not in event:
-                        logging.warning("   [تجاهل] تم استلام حدث غير مكتمل، يتم تجاهله.")
-                        continue
-                    # ----------------------------------------------------
                     pair_address = event['args']['pair']
                     token0 = event['args']['token0']
                     token1 = event['args']['token1']
@@ -374,7 +369,7 @@ class القناص:
         base_price = await self.w3.eth.gas_price
         tip = Web3.to_wei(self.bot_state['GAS_PRICE_TIP_GWEI'], 'gwei')
         return base_price + tip
-
+    
     async def _approve_max(self, token_address: str):
         logging.info(f"   [موافقة] جاري عمل Approve لكمية لا نهائية لـ {token_address}...")
         try:
@@ -383,8 +378,8 @@ class القناص:
             max_amount = 2**256 - 1
             approve_tx = await token_contract.functions.approve(Web3.to_checksum_address(ROUTER_ADDRESS), max_amount).build_transaction({
                 'from': self.account.address,
-                'gasPrice': await self._get_dynamic_gas(),
-                'gas': 100000,
+                'gasPrice': await self._get_dynamic_gas(), 
+                'gas': 100000, 
                 'nonce': await self.nonce_manager.get_next()
             })
             signed_tx = self.account.sign_transaction(approve_tx)
@@ -399,7 +394,7 @@ class القناص:
             logging.info(f"🚀🚀🚀 بدء عملية قنص وشراء العملة: {token_address} 🚀🚀🚀")
             bnb_amount_wei = Web3.to_wei(self.bot_state['BUY_AMOUNT_BNB'], 'ether')
             path = [Web3.to_checksum_address(WBNB_ADDRESS), Web3.to_checksum_address(token_address)]
-
+            
             amounts_out = await self.router_contract.functions.getAmountsOut(bnb_amount_wei, path).call()
             min_tokens = int(amounts_out[1] * (1 - (self.bot_state['SLIPPAGE_LIMIT'] / 100)))
 
@@ -408,7 +403,7 @@ class القناص:
                 'gas': self.bot_state['GAS_LIMIT'], 'gasPrice': await self._get_dynamic_gas(),
                 'nonce': await self.nonce_manager.get_next(),
             }
-
+            
             tx = await self.router_contract.functions.swapExactETHForTokens(
                 min_tokens, path, self.account.address, int(time.time()) + 120
             ).build_transaction(tx_params)
@@ -416,7 +411,7 @@ class القناص:
             signed_tx = self.account.sign_transaction(tx)
             tx_hash = await self.w3.eth.send_raw_transaction(signed_tx.rawTransaction)
             logging.info(f"   هاش معاملة الشراء: {tx_hash.hex()}")
-
+            
             receipt = await self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=180)
 
             if receipt['status'] == 1:
@@ -477,7 +472,7 @@ class الحارس:
         try:
             path = [Web3.to_checksum_address(token_address), Web3.to_checksum_address(WBNB_ADDRESS)]
             tx_params = {
-                'from': self.account.address, 'gas': self.bot_state['GAS_LIMIT'],
+                'from': self.account.address, 'gas': self.bot_state['GAS_LIMIT'], 
                 'gasPrice': await self._get_dynamic_gas(),
                 'nonce': await self.nonce_manager.get_next()
             }
@@ -488,7 +483,7 @@ class الحارس:
             swap_hash = await self.w3.eth.send_raw_transaction(signed_swap.rawTransaction)
             logging.info(f"   - هاش البيع: {swap_hash.hex()}")
             receipt = await self.w3.eth.wait_for_transaction_receipt(swap_hash, timeout=180)
-
+            
             if receipt['status'] == 1:
                 sell_type = "يدوية" if manual else "تلقائية"
                 msg = f"💸 <b>نجحت عملية البيع ({sell_type})!</b> 💸\n\n<b>العملة:</b> <code>{token_address}</code>\n<b>رابط المعاملة:</b> <a href='https://bscscan.com/tx/{swap_hash.hex()}'>BscScan</a>"
@@ -501,7 +496,7 @@ class الحارس:
         except Exception:
             logging.exception(f"   - ❌ خطأ فادح في عملية البيع:")
             return False
-
+            
     async def manual_sell_token(self, token_address: str) -> bool:
         trade_to_sell = next((t for t in self.active_trades if t['token_address'] == token_address), None)
         if trade_to_sell:
@@ -533,7 +528,7 @@ class الحارس:
                     logging.info(f"🎯 [الحارس] تفعيل الهدف الثاني للربح لـ {trade['token_address']}")
                     if await self._execute_sell(trade, trade['remaining_amount_wei']): self.active_trades.remove(trade)
                 if profit <= self.bot_state['STOP_LOSS_THRESHOLD']:
-                    logging.warning(f"🛑 [الحارس] تفعيل وقف الخسارة لـ {trade['token_address']}")
+                    logging.warning(f"🚨 [الحارس] تفعيل وقف الخسارة لـ {trade['token_address']}")
                     if await self._execute_sell(trade, trade['remaining_amount_wei']): self.active_trades.remove(trade)
             await asyncio.sleep(5)
 
@@ -555,8 +550,8 @@ async def process_new_token(pair_address, token_address, verifier, sniper, guard
         logging.warning(f"🔻 [مهمة منتهية] تم تجاهل العملة {token_address} (لم تجتز الفحص).")
 
 async def main():
-    logging.info("--- بدء تشغيل بوت صياد الدرر (v4.7 النسخة النهائية) ---")
-
+    logging.info("--- بدأ تشغيل بوت صياد الدرر (v4.6 النسخة النهائية) ---")
+    
     bot_state = {
         'is_paused': False,
         'BUY_AMOUNT_BNB': float(os.getenv('BUY_AMOUNT_BNB', '0.01')),
@@ -570,7 +565,7 @@ async def main():
         'SELL_PERCENTAGE_2': int(os.getenv('SELL_PERCENTAGE_2', '100')),
         'STOP_LOSS_THRESHOLD': int(os.getenv('STOP_LOSS_THRESHOLD', '-50')),
     }
-
+    
     w3 = AsyncWeb3(AsyncHTTPProvider(NODE_URL))
     is_connected = await w3.is_connected()
     if not is_connected:
@@ -578,7 +573,7 @@ async def main():
 
     nonce_manager = مدير_الـNonce(w3, WALLET_ADDRESS)
     await nonce_manager.initialize()
-
+    
     guardian = الحارس(w3, nonce_manager, None, bot_state)
     telegram_interface = واجهة_التليجرام(TELEGRAM_BOT_TOKEN, TELEGRAM_ADMIN_CHAT_ID, bot_state, guardian)
     guardian.telegram = telegram_interface
@@ -586,16 +581,16 @@ async def main():
     watcher = الراصد(w3)
     verifier = المدقق(w3, telegram_interface, bot_state)
     sniper = القناص(w3, nonce_manager, telegram_interface, bot_state)
-
+    
     async def new_pool_handler(pair, token):
         asyncio.create_task(process_new_token(pair, token, verifier, sniper, guardian, bot_state, telegram_interface))
 
     logging.info("🚀 البوت جاهز على خط الانطلاق...")
-
+    
     telegram_task = asyncio.create_task(telegram_interface.run())
     guardian_task = asyncio.create_task(guardian.monitor_trades())
     watcher_task = asyncio.create_task(watcher.استمع_للمجمعات_الجديدة(new_pool_handler))
-
+    
     await asyncio.gather(telegram_task, guardian_task, watcher_task)
 
 if __name__ == "__main__":
