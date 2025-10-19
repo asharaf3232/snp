@@ -89,6 +89,7 @@ class واجهة_التليجرام:
         self.application.add_handler(CommandHandler("start", self.start))
         self.application.add_handler(MessageHandler(filters.Regex('^📊 الحالة$'), self.show_status))
         self.application.add_handler(MessageHandler(filters.Regex('^(⏸️ إيقاف القنص|▶️ استئناف القنص)$'), self.toggle_pause))
+        self.application.add_handler(MessageHandler(filters.Regex('^(🟢 تفعيل التصحيح|⚪️ إيقاف التصحيح)$'), self.toggle_debug_mode))
         self.application.add_handler(MessageHandler(filters.Regex('^💰 بيع يدوي$'), self.show_sell_options))
         self.application.add_handler(MessageHandler(filters.Regex('^🔬 التشخيص$'), self.show_diagnostics))
         self.application.add_handler(settings_conv_handler)
@@ -96,10 +97,11 @@ class واجهة_التليجرام:
 
     def _get_main_keyboard(self):
         pause_button_text = "▶️ استئناف القنص" if self.bot_state['is_paused'] else "⏸️ إيقاف القنص"
+        debug_button_text = "⚪️ إيقاف التصحيح" if self.bot_state.get('DEBUG_MODE', False) else "🟢 تفعيل التصحيح"
         keyboard = [
             [KeyboardButton("📊 الحالة"), KeyboardButton(pause_button_text)],
             [KeyboardButton("💰 بيع يدوي"), KeyboardButton("⚙️ الإعدادات")],
-            [KeyboardButton("🔬 التشخيص")]
+            [KeyboardButton("🔬 التشخيص"), KeyboardButton(debug_button_text)]
         ]
         return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
@@ -110,8 +112,24 @@ class واجهة_التليجرام:
             logging.error(f"❌ خطأ في إرسال رسالة تليجرام: {e}")
 
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        if str(update.effective_chat.id) != self.admin_id: return
-        await update.message.reply_text(
+        # هذا الكائن `update` يمكن أن يكون من نوع `Update` (قادم من أمر) أو `Message` (قادم من رد).
+        # هذا التعديل يعالج كلتا الحالتين لمنع الأخطاء.
+        message_to_reply = update
+        chat_id = None
+
+        if hasattr(update, 'effective_chat'):  # إذا كان الكائن هو Update
+            chat_id = update.effective_chat.id
+            message_to_reply = update.message
+        elif hasattr(update, 'chat'):  # إذا كان الكائن هو Message
+            chat_id = update.chat.id
+        else:
+            logging.warning("تم استدعاء دالة البدء بكائن غير معروف.")
+            return
+
+        if str(chat_id) != self.admin_id:
+            return
+
+        await message_to_reply.reply_text(
             '<b>أهلاً بك في مركز قيادة صياد الدرر!</b>',
             reply_markup=self._get_main_keyboard(),
             parse_mode=ParseMode.HTML
@@ -167,6 +185,15 @@ class واجهة_التليجرام:
         self.bot_state['is_paused'] = not self.bot_state['is_paused']
         status = "موقوف مؤقتاً ⏸️" if self.bot_state['is_paused'] else "نشط ▶️"
         await self.send_message(f"ℹ️ حالة قنص العملات الجديدة الآن: <b>{status}</b>")
+        await self.start(update, context)
+
+    async def toggle_debug_mode(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """يفعل أو يعطل وضع التصحيح ويرسل رسالة تأكيد."""
+        self.bot_state['DEBUG_MODE'] = not self.bot_state.get('DEBUG_MODE', False)
+        status = "فعّال 🟢" if self.bot_state['DEBUG_MODE'] else "غير فعّال ⚪️"
+        logging.info(f"⚙️ تم تغيير وضع التصحيح إلى: {status}")
+        await self.send_message(f"ℹ️ وضع التصحيح الآن: <b>{status}</b>")
+        # إعادة إرسال القائمة الرئيسية لإظهار الزر الجديد
         await self.start(update, context)
 
     async def show_sell_options(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -622,3 +649,5 @@ if __name__ == "__main__":
         logging.info("\n--- تم إيقاف البوت يدويًا ---")
     except Exception:
         logging.critical(f"❌ خطأ فادح في البرنامج الرئيسي:", exc_info=True)
+
+
