@@ -1,5 +1,5 @@
 # =================================================================
-# صياد الدرر: v7.1 (الإصلاح النهائي لـ Web3 v7)
+# صياد الدرر: v7.2 (الإصلاح النهائي والحقيقي لـ Web3 v7)
 # =================================================================
 
 import os
@@ -10,11 +10,9 @@ import logging
 from typing import Dict, List, Any, Tuple
 
 from dotenv import load_dotenv
-# --- [التصحيح النهائي والحاسم هنا] ---
-# تم تعديل مسار الاستيراد ليتوافق مع أحدث إصدار من مكتبة web3 (v7+)
+# --- [التصحيح النهائي والحقيقي هنا] ---
+# تم تعديل الكود بالكامل ليتوافق مع البنية الجديدة لمكتبة web3 (v7+)
 from web3 import Web3, AsyncWeb3
-from web3.providers.websocket import WebsocketProviderV2
-from web3.providers.async_http import AsyncHTTPProvider
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import (Application, CommandHandler, CallbackQueryHandler, 
                           ContextTypes, ConversationHandler, MessageHandler, filters)
@@ -36,7 +34,7 @@ logging.basicConfig(
 # 2. واجهات العقود الذكية (ABIs)
 # =================================================================
 FACTORY_ABI = json.loads('[{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"token0","type":"address"},{"indexed":true,"internalType":"address","name":"token1","type":"address"},{"indexed":false,"internalType":"address","name":"pair","type":"address"},{"indexed":false,"internalType":"uint256","name":"","type":"uint256"}],"name":"PairCreated","type":"event"}]')
-PAIR_ABI = json.loads('[{"constant":true,"inputs":[],"name":"getReserves","outputs":[{"internalType":"uint112","name":"_reserve0","type":"uint12"},{"internalType":"uint112","name":"_reserve1","type":"uint112"},{"internalType":"uint32","name":"_blockTimestampLast","type":"uint32"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"token0","outputs":[{"internalType":"address","name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"}]')
+PAIR_ABI = json.loads('[{"constant":true,"inputs":[],"name":"getReserves","outputs":[{"internalType":"uint112","name":"_reserve0","type":"uint112"},{"internalType":"uint112","name":"_reserve1","type":"uint112"},{"internalType":"uint32","name":"_blockTimestampLast","type":"uint32"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"token0","outputs":[{"internalType":"address","name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"}]')
 ROUTER_ABI = json.loads('[{"inputs":[{"internalType":"uint256","name":"amountIn","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"}],"name":"getAmountsOut","outputs":[{"internalType":"uint256[]","name":"amounts","type":"uint256[]"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"amountOutMin","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"swapExactETHForTokens","outputs":[{"internalType":"uint256[]","name":"amounts","type":"uint256[]"}],"stateMutability":"payable","type":"function"},{"inputs":[{"internalType":"uint256","name":"amountIn","type":"uint256"},{"internalType":"uint256","name":"amountOutMin","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"swapExactTokensForETHSupportingFeeOnTransferTokens","outputs":[],"stateMutability":"nonpayable","type":"function"}]')
 ERC20_ABI = json.loads('[{"constant":true,"inputs":[],"name":"decimals","outputs":[{"name":"","type":"uint8"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"_spender","type":"address"},{"name":"_value","type":"uint256"}],"name":"approve","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[{"name":"_owner","type":"address"}],"name":"balanceOf","outputs":[{"name":"balance","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"}]')
 
@@ -245,7 +243,7 @@ class واجهة_التليجرام:
         return ConversationHandler.END
 
     async def run(self):
-        await self.send_message("✅ <b>تم تشغيل بوت صياد الدرر (v7.1) بنجاح!</b>")
+        await self.send_message("✅ <b>تم تشغيل بوت صياد الدرر (v7.2) بنجاح!</b>")
         await self.application.initialize()
         await self.application.start()
         await self.application.updater.start_polling()
@@ -570,7 +568,7 @@ async def process_new_token(pair_address, token_address, verifier, sniper, guard
              await telegram_if.send_message(f"⚪️ <b>تم تجاهل عملة</b>\n\n<code>{token_address}</code>\n\n<b>السبب:</b> {reason}")
 
 async def main():
-    logging.info("--- بدأ تشغيل بوت صياد الدرر (v7.1 نسخة Web3 v7+) ---")
+    logging.info("--- بدأ تشغيل بوت صياد الدرر (v7.2 نسخة Web3 v7+) ---")
     
     bot_state = {
         'is_paused': False,
@@ -589,12 +587,12 @@ async def main():
     
     # --- الترقية النهائية هنا (متوافقة مع v7+) ---
     if NODE_URL.startswith("wss://"):
-        logging.info("🔌 الاتصال باستخدام Websocket V2 (WSS)...")
-        provider = WebsocketProviderV2(NODE_URL)
+        logging.info("🔌 الاتصال باستخدام Websocket...")
+        w3 = AsyncWeb3(AsyncWeb3.AsyncWebsocketProvider(NODE_URL))
     else:
         logging.info("📡 الاتصال باستخدام HTTP...")
-        provider = AsyncHTTPProvider(NODE_URL)
-    w3 = AsyncWeb3(provider)
+        w3 = AsyncWeb3(AsyncWeb3.AsyncHTTPProvider(NODE_URL))
+
 
     if not await w3.is_connected():
         logging.critical("❌ لا يمكن الاتصال بالشبكة عند البدء. يتم الخروج."); return
