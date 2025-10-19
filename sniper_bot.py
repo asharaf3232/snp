@@ -620,7 +620,7 @@ async def main():
     watcher_task = asyncio.create_task(watcher.استمع_للمجمعات_الجديدة(new_pool_handler))
     health_check_task = asyncio.create_task(watcher.check_connection_periodically())
     
-    await asyncio.gather(telegram_task, guardian_task, watcher_task, health_check_task))
+    await asyncio.gather(telegram_task, guardian_task, watcher_task, health_check_task)
 
 if __name__ == "__main__":
     try:
