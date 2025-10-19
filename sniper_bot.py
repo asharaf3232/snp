@@ -1,5 +1,5 @@
 # =================================================================
-# صياد الدرر: v6.0 (النسخة النهائية - WSS Full Migration)
+# صياد الدرر: v7.0 (النسخة الكاملة والنهائية - WSS Corrected)
 # =================================================================
 
 import os
@@ -10,8 +10,7 @@ import logging
 from typing import Dict, List, Any
 
 from dotenv import load_dotenv
-from web3 import Web3, AsyncWeb3
-from web3.providers.async_ws import AsyncWebsocketProvider
+from web3 import Web3, AsyncWeb3, WebSocketProvider
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import (Application, CommandHandler, CallbackQueryHandler, 
                           ContextTypes, ConversationHandler, MessageHandler, filters)
@@ -562,7 +561,7 @@ async def main():
         'STOP_LOSS_THRESHOLD': int(os.getenv('STOP_LOSS_THRESHOLD', '-50')),
     }
     
-    w3 = AsyncWeb3(AsyncWebsocketProvider(NODE_URL))
+    w3 = AsyncWeb3(WebSocketProvider(NODE_URL))
     is_connected = await w3.is_connected()
     if not is_connected:
         logger.critical("❌ لا يمكن الاتصال بالشبكة. يتم الخروج."); return
