@@ -586,12 +586,12 @@ async def main():
     # --- [الإصلاح النهائي الحقيقي] الطريقة الصحيحة للاتصال في Web3 v7+ ---
     if NODE_URL.startswith("wss://"):
         logging.info("🔌 الاتصال باستخدام Websocket...")
-        # الطريقة الصحيحة لاستدعاء WebsocketProvider في v7
-        provider = AsyncWeb3.AsyncWebsocketProvider(NODE_URL)
+        # ✅ **التعديل الصحيح هنا**
+        provider = AsyncWeb3.WebsocketProvider(NODE_URL)
     else:
         logging.info("📡 الاتصال باستخدام HTTP...")
-        # الطريقة الصحيحة لاستدعاء HTTPProvider في v7
-        provider = AsyncWeb3.AsyncHTTPProvider(NODE_URL)
+        # ✅ **التعديل الصحيح هنا**
+        provider = AsyncWeb3.HTTPProvider(NODE_URL)
     
     w3 = AsyncWeb3(provider)
 
@@ -620,7 +620,7 @@ async def main():
     watcher_task = asyncio.create_task(watcher.استمع_للمجمعات_الجديدة(new_pool_handler))
     health_check_task = asyncio.create_task(watcher.check_connection_periodically())
     
-    await asyncio.gather(telegram_task, guardian_task, watcher_task, health_check_task)
+    await asyncio.gather(telegram_task, guardian_task, watcher_task, health_check_task))
 
 if __name__ == "__main__":
     try:
