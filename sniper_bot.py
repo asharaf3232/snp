@@ -1,5 +1,5 @@
 # =================================================================
-# صياد الدرر: v4.7 (النسخة النهائية المستقرة) - محدث لـ AsyncWeb3 v6+
+# صياد الدرر: v4.9 (النسخة النهائية الكاملة) - إصلاح الاتصال
 # =================================================================
 
 import os
@@ -10,7 +10,7 @@ import logging
 from typing import Dict, List, Any
 
 from dotenv import load_dotenv
-from web3 import Web3, AsyncWeb3, AsyncHTTPProvider
+from web3 import Web3, AsyncWeb3, AsyncWebsocketProvider
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import (Application, CommandHandler, CallbackQueryHandler, 
                           ContextTypes, ConversationHandler, MessageHandler, filters)
@@ -248,7 +248,7 @@ class واجهة_التليجرام:
         return ConversationHandler.END
 
     async def run(self):
-        await self.send_message("✅ <b>تم تشغيل بوت صياد الدرر (v4.6) بنجاح!</b>")
+        await self.send_message("✅ <b>تم تشغيل بوت صياد الدرر (v4.9) بنجاح!</b>")
         await self.application.initialize()
         await self.application.start()
         await self.application.updater.start_polling()
@@ -293,7 +293,7 @@ class الراصد:
         logging.info("👂 بدء الاستماع لحدث PairCreated...")
         while True:
             try:
-                new_entries = await self.w3.eth.get_filter_changes(event_filter.filter_id)
+                new_entries = await event_filter.get_new_entries()
                 for event in new_entries:
                     pair_address = event['args']['pair']
                     token0 = event['args']['token0']
@@ -550,7 +550,7 @@ async def process_new_token(pair_address, token_address, verifier, sniper, guard
         logging.warning(f"🔻 [مهمة منتهية] تم تجاهل العملة {token_address} (لم تجتز الفحص).")
 
 async def main():
-    logging.info("--- بدأ تشغيل بوت صياد الدرر (v4.6 النسخة النهائية) ---")
+    logging.info("--- بدأ تشغيل بوت صياد الدرر (v4.9 النسخة النهائية) ---")
     
     bot_state = {
         'is_paused': False,
@@ -566,7 +566,7 @@ async def main():
         'STOP_LOSS_THRESHOLD': int(os.getenv('STOP_LOSS_THRESHOLD', '-50')),
     }
     
-    w3 = AsyncWeb3(AsyncHTTPProvider(NODE_URL))
+    w3 = AsyncWeb3(AsyncWebsocketProvider(NODE_URL))
     is_connected = await w3.is_connected()
     if not is_connected:
         logging.critical("❌ لا يمكن الاتصال بالشبكة. يتم الخروج."); return
@@ -600,3 +600,4 @@ if __name__ == "__main__":
         logging.info("\n--- تم إيقاف البوت يدويًا ---")
     except Exception:
         logging.critical(f"❌ خطأ فادح في البرنامج الرئيسي:", exc_info=True)
+
