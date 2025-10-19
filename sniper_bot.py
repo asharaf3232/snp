@@ -1,5 +1,5 @@
 # =================================================================
-# صياد الدرر: v6.0 (WebSocket Ready - النسخة النهائية)
+# صياد الدرر: v7.0 (متوافق مع Web3 v7 - النسخة النهائية)
 # =================================================================
 
 import os
@@ -10,7 +10,10 @@ import logging
 from typing import Dict, List, Any, Tuple
 
 from dotenv import load_dotenv
-from web3 import Web3, AsyncWeb3, AsyncHTTPProvider, AsyncWebsocketProvider
+# --- [التصحيح النهائي هنا] ---
+# تم تعديل مسار الاستيراد ليتوافق مع الإصدار 7 من مكتبة web3
+from web3 import Web3, AsyncWeb3
+from web3.providers.async_rpc import AsyncHTTPProvider, AsyncWebsocketProvider
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import (Application, CommandHandler, CallbackQueryHandler, 
                           ContextTypes, ConversationHandler, MessageHandler, filters)
@@ -241,7 +244,7 @@ class واجهة_التليجرام:
         return ConversationHandler.END
 
     async def run(self):
-        await self.send_message("✅ <b>تم تشغيل بوت صياد الدرر (v6.0) بنجاح!</b>")
+        await self.send_message("✅ <b>تم تشغيل بوت صياد الدرر (v7.0) بنجاح!</b>")
         await self.application.initialize()
         await self.application.start()
         await self.application.updater.start_polling()
@@ -566,7 +569,7 @@ async def process_new_token(pair_address, token_address, verifier, sniper, guard
              await telegram_if.send_message(f"⚪️ <b>تم تجاهل عملة</b>\n\n<code>{token_address}</code>\n\n<b>السبب:</b> {reason}")
 
 async def main():
-    logging.info("--- بدأ تشغيل بوت صياد الدرر (v6.0 نسخة WebSocket) ---")
+    logging.info("--- بدأ تشغيل بوت صياد الدرر (v7.0 نسخة Web3 v7) ---")
     
     bot_state = {
         'is_paused': False,
