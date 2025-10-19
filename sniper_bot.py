@@ -566,6 +566,10 @@ async def process_new_token(pair_address, token_address, verifier, sniper, guard
              await telegram_if.send_message(f"⚪️ <b>تم تجاهل عملة</b>\n\n<code>{token_address}</code>\n\n<b>السبب:</b> {reason}")
 
 async def main():
+    # -- السطر المضاف هنا للتحقق من الرابط الذي يستخدمه البوت --
+    logging.info(f"DEBUG: NODE_URL being used is: {os.getenv('NODE_URL')}")
+    # -----------------------------------------------------------
+
     logging.info("--- بدأ تشغيل بوت صياد الدرر (v9.0 نسخة Web3 v7+) ---")
     
     bot_state = {
@@ -583,21 +587,32 @@ async def main():
         'STOP_LOSS_THRESHOLD': int(os.getenv('STOP_LOSS_THRESHOLD', '-50')),
     }
     
-    # --- [الإصلاح النهائي الحقيقي] الطريقة الصحيحة للاتصال في Web3 v7+ ---
-    if NODE_URL.startswith("wss://"):
-        logging.info("🔌 الاتصال باستخدام Websocket...")
-        # ✅ **التصحيح النهائي والدقيق هنا (WebSocketProvider)**
-        provider = AsyncWeb3.WebSocketProvider(NODE_URL)
-    else:
-        logging.info("📡 الاتصال باستخدام HTTP...")
-        # ✅ **التصحيح النهائي والدقيق هنا (HTTPProvider)**
-        provider = AsyncWeb3.HTTPProvider(NODE_URL)
-    
-    w3 = AsyncWeb3(provider)
+    try:
+        if NODE_URL and NODE_URL.startswith("wss://"):
+            logging.info("🔌 الاتصال باستخدام Websocket...")
+            provider = AsyncWeb3.WebSocketProvider(NODE_URL)
+        elif NODE_URL:
+            logging.info("📡 الاتصال باستخدام HTTP...")
+            provider = AsyncWeb3.HTTPProvider(NODE_URL)
+        else:
+            logging.critical("❌ متغير NODE_URL غير موجود أو فارغ. تأكد من إعداده بشكل صحيح.")
+            return
 
-    # التحقق من الاتصال
-    if not await w3.is_connected():
-        logging.critical("❌ لا يمكن الاتصال بالشبكة عند البدء. يتم الخروج."); return
+        w3 = AsyncWeb3(provider)
+
+        is_connected = await asyncio.wait_for(w3.is_connected(), timeout=10.0)
+        if not is_connected:
+            logging.critical("❌ فشل التحقق من الاتصال بعد إنشائه. الرابط قد يكون غير صحيح.")
+            return
+
+    except asyncio.TimeoutError:
+        logging.critical("❌ انتهت مهلة الاتصال (Timeout) بالـ Node. تأكد أن الرابط صحيح وأن الشبكة/الجدار الناري يسمح بالاتصال.")
+        return
+    except Exception as e:
+        logging.critical(f"❌ حدث خطأ غير متوقع أثناء محاولة الاتصال بالـ Node: {e}")
+        return
+
+    logging.info("✅ تم الاتصال بالشبكة بنجاح!")
 
     nonce_manager = مدير_الـNonce(w3, WALLET_ADDRESS)
     await nonce_manager.initialize()
