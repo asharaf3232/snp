@@ -583,6 +583,7 @@ async def main():
         'STOP_LOSS_THRESHOLD': int(os.getenv('STOP_LOSS_THRESHOLD', '-50')),
     }
     
+    # --- الترقية النهائية هنا ---
     if NODE_URL.startswith("wss://"):
         logging.info("🔌 الاتصال باستخدام Websocket (WSS)...")
         w3 = AsyncWeb3(AsyncWebsocketProvider(NODE_URL))
