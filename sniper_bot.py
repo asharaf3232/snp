@@ -1,5 +1,5 @@
 # =================================================================
-# صياد الدرر: v5.1 (إصلاح نهائي للتوافق)
+# صياد الدرر: v5.2 (إصلاح نهائي للتوافق)
 # إصلاح مشكلة توافق web3.py بشكل جذري
 # =================================================================
 
@@ -11,7 +11,7 @@ import logging
 from typing import Dict, List, Any
 
 from dotenv import load_dotenv
-from web3 import Web3, AsyncWeb3, WebsocketProvider
+from web3 import Web3, AsyncWeb3, WebSocketProvider
 from web3.providers.http import HTTPProvider
 from web3.providers.async_http import AsyncHTTPProvider
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
@@ -294,7 +294,8 @@ class مدير_الـNonce:
 
 class الراصد:
     def __init__(self, node_url: str, main_loop: asyncio.AbstractEventLoop):
-        self.w3_sync = Web3(WebsocketProvider(node_url))
+        # <<< تغيير: يستخدم اتصال WebSocket متزامن ومستقل >>>
+        self.w3_sync = Web3(WebSocketProvider(node_url))
         self.factory_contract = self.w3_sync.eth.contract(address=Web3.to_checksum_address(FACTORY_ADDRESS), abi=FACTORY_ABI)
         self.main_loop = main_loop
         logging.info("✅ الراصد متصل وجاهز للاستماع (باستخدام اتصال WebSocket مستقل).")
@@ -311,15 +312,11 @@ class الراصد:
                     new_token = token1 if token0.lower() == WBNB_ADDRESS.lower() else token0
                     logging.info(f"🔔 تم اكتشاف مجمع جديد: {pair_address} | العملة: {new_token}")
                     
+                    # <<< تغيير: استدعاء الدالة غير المتزامنة بأمان من المسار المنفصل >>>
                     asyncio.run_coroutine_threadsafe(handler_func(pair_address, new_token), self.main_loop)
             except Exception as e:
                 logging.warning(f"⚠️ خطأ أثناء الاستماع في الراصد: {e}")
-                # Re-create filter if it gets lost
-                if 'filter not found' in str(e).lower():
-                    logging.info("   [الراصد] الفلتر غير موجود، سيتم إعادة إنشائه...")
-                    event_filter = self.factory_contract.events.PairCreated.create_filter(fromBlock='latest')
-                else:
-                    time.sleep(5)
+                time.sleep(5) # انتظر قبل إعادة المحاولة
             time.sleep(2)
 
 class المدقق:
