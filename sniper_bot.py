@@ -1,5 +1,5 @@
 # =================================================================
-# صياد الدرر: v5.0 (إصلاح نهائي ومستقر)
+# صياد الدرر: v5.1 (إصلاح نهائي للتوافق)
 # إصلاح مشكلة توافق web3.py بشكل جذري
 # =================================================================
 
@@ -11,9 +11,9 @@ import logging
 from typing import Dict, List, Any
 
 from dotenv import load_dotenv
-from web3 import Web3, AsyncWeb3
-from web3.providers.rpc import HTTPProvider
-from web3.providers.websocket import WebsocketProvider
+from web3 import Web3, AsyncWeb3, WebsocketProvider
+from web3.providers.http import HTTPProvider
+from web3.providers.async_http import AsyncHTTPProvider
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import (Application, CommandHandler, CallbackQueryHandler, 
                           ContextTypes, ConversationHandler, MessageHandler, filters)
@@ -22,6 +22,7 @@ from telegram.constants import ParseMode
 # =================================================================
 # 1. نظام التسجيل (Logging)
 # =================================================================
+# ... (الكود هنا لم يتغير)
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -34,6 +35,7 @@ logging.basicConfig(
 # =================================================================
 # 2. واجهات العقود الذكية (ABIs)
 # =================================================================
+# ... (الكود هنا لم يتغير)
 FACTORY_ABI = json.loads('[{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"token0","type":"address"},{"indexed":true,"internalType":"address","name":"token1","type":"address"},{"indexed":false,"internalType":"address","name":"pair","type":"address"},{"indexed":false,"internalType":"uint256","name":"","type":"uint256"}],"name":"PairCreated","type":"event"}]')
 PAIR_ABI = json.loads('[{"constant":true,"inputs":[],"name":"getReserves","outputs":[{"internalType":"uint112","name":"_reserve0","type":"uint112"},{"internalType":"uint112","name":"_reserve1","type":"uint112"},{"internalType":"uint32","name":"_blockTimestampLast","type":"uint32"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"token0","outputs":[{"internalType":"address","name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"}]')
 ROUTER_ABI = json.loads('[{"inputs":[{"internalType":"uint256","name":"amountIn","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"}],"name":"getAmountsOut","outputs":[{"internalType":"uint256[]","name":"amounts","type":"uint256[]"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"amountOutMin","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"swapExactETHForTokens","outputs":[{"internalType":"uint256[]","name":"amounts","type":"uint256[]"}],"stateMutability":"payable","type":"function"},{"inputs":[{"internalType":"uint256","name":"amountIn","type":"uint256"},{"internalType":"uint256","name":"amountOutMin","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"swapExactTokensForETHSupportingFeeOnTransferTokens","outputs":[],"stateMutability":"nonpayable","type":"function"}]')
@@ -42,6 +44,7 @@ ERC20_ABI = json.loads('[{"constant":true,"inputs":[],"name":"decimals","outputs
 # =================================================================
 # 3. الإعدادات المركزية
 # =================================================================
+# ... (الكود هنا لم يتغير)
 load_dotenv()
 
 # --- إعدادات الاتصال بالشبكة (BSC) ---
@@ -71,6 +74,7 @@ logging.info("✅ تم تحميل الإعدادات المحصّنة بنجاح
 # =================================================================
 # 4. فئة واجهة التليجرام (مع لوحة تحكم ثابتة)
 # =================================================================
+# ... (الكود هنا لم يتغير)
 (SELECTING_SETTING, TYPING_VALUE) = range(2)
 
 class واجهة_التليجرام:
@@ -290,7 +294,6 @@ class مدير_الـNonce:
 
 class الراصد:
     def __init__(self, node_url: str, main_loop: asyncio.AbstractEventLoop):
-        # <<< تغيير: يستخدم اتصال WebSocket متزامن ومستقل >>>
         self.w3_sync = Web3(WebsocketProvider(node_url))
         self.factory_contract = self.w3_sync.eth.contract(address=Web3.to_checksum_address(FACTORY_ADDRESS), abi=FACTORY_ABI)
         self.main_loop = main_loop
@@ -308,11 +311,15 @@ class الراصد:
                     new_token = token1 if token0.lower() == WBNB_ADDRESS.lower() else token0
                     logging.info(f"🔔 تم اكتشاف مجمع جديد: {pair_address} | العملة: {new_token}")
                     
-                    # <<< تغيير: استدعاء الدالة غير المتزامنة بأمان من المسار المنفصل >>>
                     asyncio.run_coroutine_threadsafe(handler_func(pair_address, new_token), self.main_loop)
             except Exception as e:
                 logging.warning(f"⚠️ خطأ أثناء الاستماع في الراصد: {e}")
-                time.sleep(5) # انتظر قبل إعادة المحاولة
+                # Re-create filter if it gets lost
+                if 'filter not found' in str(e).lower():
+                    logging.info("   [الراصد] الفلتر غير موجود، سيتم إعادة إنشائه...")
+                    event_filter = self.factory_contract.events.PairCreated.create_filter(fromBlock='latest')
+                else:
+                    time.sleep(5)
             time.sleep(2)
 
 class المدقق:
@@ -576,7 +583,7 @@ async def main():
     
     # <<< تغيير: استخدام HTTPProvider للعمليات غير المتزامنة >>>
     http_node_url = NODE_URL.replace("wss://", "https://").replace("ws://", "http://")
-    w3 = AsyncWeb3(HTTPProvider(http_node_url))
+    w3 = AsyncWeb3(AsyncHTTPProvider(http_node_url))
     
     is_connected = await w3.is_connected()
     if not is_connected:
