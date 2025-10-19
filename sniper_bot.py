@@ -1,5 +1,5 @@
 # =================================================================
-# صياد الدرر: v5.0 (النسخة الكاملة والنهائية)
+# صياد الدرر: v5.1 (نسخة الشفافية الكاملة)
 # =================================================================
 
 import os
@@ -7,7 +7,7 @@ import json
 import time
 import asyncio
 import logging
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Tuple
 
 from dotenv import load_dotenv
 from web3 import Web3, AsyncWeb3, AsyncHTTPProvider
@@ -140,6 +140,7 @@ class واجهة_التليجرام:
     async def show_status(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         status_text = "<b>📊 الحالة الحالية للبوت:</b>\n\n"
         status_text += f"<b>الحالة:</b> {'موقوف مؤقتاً ⏸️' if self.bot_state['is_paused'] else 'نشط ▶️'}\n"
+        status_text += f"<b>وضع التصحيح:</b> {'فعّال 🟢' if self.bot_state['DEBUG_MODE'] else 'غير فعّال ⚪️'}\n"
         status_text += "-----------------------------------\n"
         if not self.guardian.active_trades:
             status_text += "ℹ️ لا توجد صفقات نشطة حالياً.\n"
@@ -248,7 +249,7 @@ class واجهة_التليجرام:
         return ConversationHandler.END
 
     async def run(self):
-        await self.send_message("✅ <b>تم تشغيل بوت صياد الدرر (v4.8) بنجاح!</b>")
+        await self.send_message("✅ <b>تم تشغيل بوت صياد الدرر (v5.1) بنجاح!</b>")
         await self.application.initialize()
         await self.application.start()
         await self.application.updater.start_polling()
@@ -318,7 +319,8 @@ class المدقق:
         self.telegram = telegram_interface
         self.bot_state = bot_state
         logging.info("✅ المدقق جاهز (مع فلترة سيولة ومحاكاة بيع).")
-    async def فحص_أولي_سريع(self, pair_address: str) -> bool:
+        
+    async def فحص_أولي_سريع(self, pair_address: str) -> Tuple[bool, float]:
         logging.info(f"   [فحص سريع] التحقق من سيولة المجمع: {pair_address}")
         try:
             pair_contract = self.w3.eth.contract(address=Web3.to_checksum_address(pair_address), abi=PAIR_ABI)
@@ -329,14 +331,15 @@ class المدقق:
             logging.info(f"   [فحص سريع] السيولة المكتشفة: {wbnb_reserve:.2f} BNB")
             if wbnb_reserve >= self.bot_state['MINIMUM_LIQUIDITY_BNB']:
                 logging.info(f"   [فحص سريع] ✅ نجح. السيولة كافية.")
-                return True
+                return True, wbnb_reserve
             else:
                 logging.warning(f"   [فحص سريع] 🔻 فشل. السيولة أقل من الحد المطلوب.")
-                return False
+                return False, wbnb_reserve
         except Exception as e:
             logging.error(f"   [فحص سريع] ⚠️ خطأ أثناء فحص السيولة: {e}")
-            return False
-    async def محاكاة_عملية_بيع(self, token_address: str) -> bool:
+            return False, 0.0
+
+    async def محاكاة_عملية_بيع(self, token_address: str) -> Tuple[bool, str]:
         logging.info(f"   [محاكاة البيع] التحقق من إمكانية بيع {token_address}")
         try:
             checksum_token = Web3.to_checksum_address(token_address)
@@ -345,16 +348,22 @@ class المدقق:
                 1, 0, [checksum_token, Web3.to_checksum_address(WBNB_ADDRESS)], checksum_wallet, int(time.time()) + 120
             ).call({'from': checksum_wallet})
             logging.info("   [محاكاة البيع] ✅ نجحت المحاكاة. العملة قابلة للبيع.")
-            return True
+            return True, "العملة قابلة للبيع"
         except Exception as e:
-            logging.warning(f"   [محاكاة البيع] 🚨🚨🚨 فشلت المحاكاة! على الأغلب Honeypot. الخطأ: {e}")
-            msg = f"🚨 <b>تم اكتشاف فخ عسل (Honeypot)!</b> 🚨\n\n<b>العملة:</b> <code>{token_address}</code>\n\nتم تجاهلها لحماية أموالك."
-            await self.telegram.send_message(msg)
-            return False
-    async def فحص_شامل(self, pair_address: str, token_address: str) -> bool:
-        if not await self.فحص_أولي_سريع(pair_address): return False
-        if not await self.محاكاة_عملية_بيع(token_address): return False
-        return True
+            error_message = f"فشلت المحاكاة: {e}"
+            logging.warning(f"   [محاكاة البيع] 🚨🚨🚨 {error_message}")
+            return False, "فخ عسل (Honeypot)"
+
+    async def فحص_شامل(self, pair_address: str, token_address: str) -> Tuple[bool, str]:
+        liquidity_passed, wbnb_reserve = await self.فحص_أولي_سريع(pair_address)
+        if not liquidity_passed:
+            return False, f"سيولة غير كافية ({wbnb_reserve:.2f} BNB)"
+        
+        sell_sim_passed, reason = await self.محاكاة_عملية_بيع(token_address)
+        if not sell_sim_passed:
+            return False, reason
+            
+        return True, "اجتاز كل الفحوصات"
 
 class القناص:
     def __init__(self, w3: AsyncWeb3, nonce_manager: "مدير_الـNonce", telegram_interface: "واجهة_التليجرام", bot_state: Dict):
@@ -541,20 +550,29 @@ async def process_new_token(pair_address, token_address, verifier, sniper, guard
     if bot_state['is_paused']:
         logging.info(f"   [تجاهل] تم تجاهل {token_address} لأن القنص موقوف مؤقتاً.")
         return
+
     logging.info(f"\n[مهمة جديدة] بدأت معالجة العملة: {token_address}")
-    if await verifier.فحص_شامل(pair_address, token_address):
+    
+    passed, reason = await verifier.فحص_شامل(pair_address, token_address)
+
+    if passed:
         await telegram_if.send_message(f"✅ <b>عملة اجتازت الفحص!</b>\n\n<code>{token_address}</code>\n\n🚀 جاري محاولة القنص...")
         trade_result = await sniper.تنفيذ_الشراء(token_address)
         if trade_result.get("success"):
             guardian.add_trade(trade_result)
     else:
-        logging.warning(f"🔻 [مهمة منتهية] تم تجاهل العملة {token_address} (لم تجتز الفحص).")
+        # هنا تكمن الشفافية الجديدة
+        logging.warning(f"🔻 [مهمة منتهية] تم تجاهل {token_address} (السبب: {reason}).")
+        # أرسل رسالة تليجرام فقط إذا كان وضع التصحيح فعالاً
+        if bot_state.get('DEBUG_MODE', False):
+             await telegram_if.send_message(f"⚪️ <b>تم تجاهل عملة</b>\n\n<code>{token_address}</code>\n\n<b>السبب:</b> {reason}")
 
 async def main():
-    logging.info("--- بدأ تشغيل بوت صياد الدرر (v4.8 النسخة النهائية) ---")
+    logging.info("--- بدأ تشغيل بوت صياد الدرر (v5.1 نسخة الشفافية الكاملة) ---")
     
     bot_state = {
         'is_paused': False,
+        'DEBUG_MODE': os.getenv('DEBUG_MODE', 'False').lower() in ('true', '1', 't'),
         'BUY_AMOUNT_BNB': float(os.getenv('BUY_AMOUNT_BNB', '0.01')),
         'GAS_PRICE_TIP_GWEI': int(os.getenv('GAS_PRICE_TIP_GWEI', '1')),
         'SLIPPAGE_LIMIT': int(os.getenv('SLIPPAGE_LIMIT', '49')),
@@ -567,6 +585,9 @@ async def main():
         'STOP_LOSS_THRESHOLD': int(os.getenv('STOP_LOSS_THRESHOLD', '-50')),
     }
     
+    if bot_state['DEBUG_MODE']:
+        logging.info("🟢 وضع التصحيح (Debug Mode) فعال. سيتم إرسال جميع سجلات التجاهل.")
+
     w3 = AsyncWeb3(AsyncHTTPProvider(NODE_URL))
     is_connected = await w3.is_connected()
     if not is_connected:
