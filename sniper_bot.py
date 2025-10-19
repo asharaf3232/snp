@@ -1,6 +1,5 @@
 # =================================================================
-# صياد الدرر: v5.4 (النسخة النهائية المستقرة)
-# إصلاح نهائي وحاسم لمشاكل التوافق والاتصال
+# صياد الدرر: v5.0 (النسخة الكاملة والنهائية)
 # =================================================================
 
 import os
@@ -11,9 +10,7 @@ import logging
 from typing import Dict, List, Any
 
 from dotenv import load_dotenv
-from web3 import Web3, AsyncWeb3
-from web3.providers.async_http import AsyncHTTPProvider
-from web3.providers.websocket import AsyncWebSocketProvider
+from web3 import Web3, AsyncWeb3, AsyncHTTPProvider
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import (Application, CommandHandler, CallbackQueryHandler, 
                           ContextTypes, ConversationHandler, MessageHandler, filters)
@@ -44,30 +41,36 @@ ERC20_ABI = json.loads('[{"constant":true,"inputs":[],"name":"decimals","outputs
 # =================================================================
 load_dotenv()
 
+# --- إعدادات الاتصال بالشبكة (BSC) ---
 NODE_URL = os.getenv('NODE_URL')
-if not NODE_URL or not (NODE_URL.startswith("wss://") or NODE_URL.startswith("ws://")):
-    raise ValueError("❌ يجب تعيين NODE_URL في ملف .env ويجب أن يبدأ بـ 'wss://' أو 'ws://'")
+if not NODE_URL:
+    raise ValueError("❌ يجب تعيين NODE_URL في ملف .env!")
 
+# --- إعدادات المحفظة ---
 WALLET_ADDRESS = os.getenv('WALLET_ADDRESS')
 PRIVATE_KEY = os.getenv('PRIVATE_KEY', '')
+
+# --- إعدادات التليجرام ---
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 TELEGRAM_ADMIN_CHAT_ID = os.getenv('TELEGRAM_ADMIN_CHAT_ID')
+
+# --- العناوين الثابتة ---
 ROUTER_ADDRESS = os.getenv('ROUTER_ADDRESS', '0x10ED43C718714eb63d5aA57B78B54704E256024E')
 FACTORY_ADDRESS = os.getenv('FACTORY_ADDRESS', '0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73')
 WBNB_ADDRESS = "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c"
 
-if not all([WALLET_ADDRESS, PRIVATE_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_ADMIN_CHAT_ID]):
+# التحقق من المتغيرات الإلزامية
+if not WALLET_ADDRESS or not PRIVATE_KEY or not TELEGRAM_BOT_TOKEN or not TELEGRAM_ADMIN_CHAT_ID:
     raise ValueError("❌ تأكد من تعيين كل من: WALLET_ADDRESS, PRIVATE_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_ADMIN_CHAT_ID في .env!")
 
 logging.info("✅ تم تحميل الإعدادات المحصّنة بنجاح.")
 
 # =================================================================
-# 4. فئة واجهة التليجرام
+# 4. فئة واجهة التليجرام (مع لوحة تحكم ثابتة)
 # =================================================================
 (SELECTING_SETTING, TYPING_VALUE) = range(2)
 
 class واجهة_التليجرام:
-    # ... (الكود هنا لم يتغير)
     def __init__(self, token, admin_id, bot_state, guardian_ref):
         self.application = Application.builder().token(token).build()
         self.admin_id = admin_id
@@ -118,7 +121,7 @@ class واجهة_التليجرام:
         query = update.callback_query
         await query.answer()
         await query.edit_message_text("تم العودة للقائمة الرئيسية.")
-        await self.start(query, context)
+        await self.start(query.message, context)
         return ConversationHandler.END
 
     async def sell_button_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -245,7 +248,7 @@ class واجهة_التليجرام:
         return ConversationHandler.END
 
     async def run(self):
-        await self.send_message("✅ <b>تم تشغيل بوت صياد الدرر (v5.3) بنجاح!</b>")
+        await self.send_message("✅ <b>تم تشغيل بوت صياد الدرر (v4.8) بنجاح!</b>")
         await self.application.initialize()
         await self.application.start()
         await self.application.updater.start_polling()
@@ -254,7 +257,6 @@ class واجهة_التليجرام:
 # 5. الوحدات الأساسية (كاملة ومحدثة)
 # =================================================================
 class مدير_الـNonce:
-    # ... (الكود هنا لم يتغير)
     def __init__(self, w3: AsyncWeb3, address: str, filename="nonce.txt"):
         self.w3 = w3
         self.address = Web3.to_checksum_address(address)
@@ -282,25 +284,24 @@ class مدير_الـNonce:
             return current_nonce
 
 class الراصد:
-    # <<< تم إعادة كتابة هذا الجزء بالكامل ليكون متوافقًا ومستقرًا >>>
     def __init__(self, w3: AsyncWeb3):
         self.w3 = w3
         self.factory_contract = self.w3.eth.contract(address=Web3.to_checksum_address(FACTORY_ADDRESS), abi=FACTORY_ABI)
         logging.info("✅ الراصد متصل وجاهز للاستماع.")
-
     async def استمع_للمجمعات_الجديدة(self, handler_func: callable):
         event_filter = await self.factory_contract.events.PairCreated.create_filter(from_block='latest')
         logging.info("👂 بدء الاستماع لحدث PairCreated...")
         while True:
             try:
-                new_entries = await event_filter.get_new_entries()
+                new_entries = await self.w3.eth.get_filter_changes(event_filter.filter_id)
                 for event in new_entries:
-                    pair_address = event['args']['pair']
-                    token0 = event['args']['token0']
-                    token1 = event['args']['token1']
-                    new_token = token1 if token0.lower() == WBNB_ADDRESS.lower() else token0
-                    logging.info(f"🔔 تم اكتشاف مجمع جديد: {pair_address} | العملة: {new_token}")
-                    asyncio.create_task(handler_func(pair_address, new_token))
+                    if 'args' in event:
+                        pair_address = event['args']['pair']
+                        token0 = event['args']['token0']
+                        token1 = event['args']['token1']
+                        new_token = token1 if token0.lower() == WBNB_ADDRESS.lower() else token0
+                        logging.info(f"🔔 تم اكتشاف مجمع جديد: {pair_address} | العملة: {new_token}")
+                        asyncio.create_task(handler_func(pair_address, new_token))
             except Exception as e:
                 logging.warning(f"⚠️ خطأ أثناء الاستماع في الراصد: {e}")
                 if 'filter not found' in str(e).lower():
@@ -311,8 +312,7 @@ class الراصد:
             await asyncio.sleep(2)
 
 class المدقق:
-    # ... (الكود هنا لم يتغير)
-    def __init__(self, w3: AsyncWeb3, telegram_interface: واجهة_التليجرام, bot_state: Dict):
+    def __init__(self, w3: AsyncWeb3, telegram_interface: "واجهة_التليجرام", bot_state: Dict):
         self.w3 = w3
         self.router_contract = self.w3.eth.contract(address=Web3.to_checksum_address(ROUTER_ADDRESS), abi=ROUTER_ABI)
         self.telegram = telegram_interface
@@ -357,8 +357,7 @@ class المدقق:
         return True
 
 class القناص:
-    # ... (الكود هنا لم يتغير)
-    def __init__(self, w3: AsyncWeb3, nonce_manager: مدير_الـNonce, telegram_interface: واجهة_التليجرام, bot_state: Dict):
+    def __init__(self, w3: AsyncWeb3, nonce_manager: "مدير_الـNonce", telegram_interface: "واجهة_التليجرام", bot_state: Dict):
         self.w3 = w3
         self.nonce_manager = nonce_manager
         self.telegram = telegram_interface
@@ -424,7 +423,7 @@ class القناص:
                 amount_bought_wei = amounts_out[1]
                 buy_price = self.bot_state['BUY_AMOUNT_BNB'] / (amount_bought_wei / (10**decimals)) if amount_bought_wei > 0 else 0
 
-                msg = f"💰 <b>نجحت عملية الشراء!</b> 💰\n\n<b>العملة:</b> <code>{token_address}</code>\n<b>المبلغ:</b> {self.bot_state['BUY_AMOUNT_BNB']} BNB\n<b>سعر الشراء:</b> ${buy_price:.10f}\n<b>رابط المعاملة:</b> <a href='https.bscscan.com/tx/{tx_hash.hex()}'>BscScan</a>"
+                msg = f"💰 <b>نجحت عملية الشراء!</b> 💰\n\n<b>العملة:</b> <code>{token_address}</code>\n<b>المبلغ:</b> {self.bot_state['BUY_AMOUNT_BNB']} BNB\n<b>سعر الشراء:</b> ${buy_price:.10f}\n<b>رابط المعاملة:</b> <a href='https://bscscan.com/tx/{tx_hash.hex()}'>BscScan</a>"
                 await self.telegram.send_message(msg)
 
                 return {"success": True, "token_address": token_address, "buy_price": buy_price, "amount_bought_wei": amount_bought_wei, "decimals": decimals}
@@ -436,8 +435,7 @@ class القناص:
             return {"success": False}
 
 class الحارس:
-    # ... (الكود هنا لم يتغير)
-    def __init__(self, w3: AsyncWeb3, nonce_manager: مدير_الـNonce, telegram_interface: واجهة_التليجرام, bot_state: Dict):
+    def __init__(self, w3: AsyncWeb3, nonce_manager: "مدير_الـNonce", telegram_interface: "واجهة_التليجرام", bot_state: Dict):
         self.w3 = w3
         self.nonce_manager = nonce_manager
         self.telegram = telegram_interface
@@ -489,7 +487,7 @@ class الحارس:
             
             if receipt['status'] == 1:
                 sell_type = "يدوية" if manual else "تلقائية"
-                msg = f"💸 <b>نجحت عملية البيع ({sell_type})!</b> 💸\n\n<b>العملة:</b> <code>{token_address}</code>\n<b>رابط المعاملة:</b> <a href='https.bscscan.com/tx/{swap_hash.hex()}'>BscScan</a>"
+                msg = f"💸 <b>نجحت عملية البيع ({sell_type})!</b> 💸\n\n<b>العملة:</b> <code>{token_address}</code>\n<b>رابط المعاملة:</b> <a href='https://bscscan.com/tx/{swap_hash.hex()}'>BscScan</a>"
                 await self.telegram.send_message(msg)
                 logging.info(f"   - 💰💰💰 نجحت عملية البيع لـ {token_address}!")
                 return True
@@ -553,7 +551,7 @@ async def process_new_token(pair_address, token_address, verifier, sniper, guard
         logging.warning(f"🔻 [مهمة منتهية] تم تجاهل العملة {token_address} (لم تجتز الفحص).")
 
 async def main():
-    logging.info("--- بدأ تشغيل بوت صياد الدرر (v5.3 النسخة النهائية) ---")
+    logging.info("--- بدأ تشغيل بوت صياد الدرر (v4.8 النسخة النهائية) ---")
     
     bot_state = {
         'is_paused': False,
@@ -569,12 +567,11 @@ async def main():
         'STOP_LOSS_THRESHOLD': int(os.getenv('STOP_LOSS_THRESHOLD', '-50')),
     }
     
-    w3 = AsyncWeb3(AsyncWebSocketProvider(NODE_URL))
-    
+    w3 = AsyncWeb3(AsyncHTTPProvider(NODE_URL))
     is_connected = await w3.is_connected()
     if not is_connected:
         logging.critical("❌ لا يمكن الاتصال بالشبكة. يتم الخروج."); return
-    
+
     nonce_manager = مدير_الـNonce(w3, WALLET_ADDRESS)
     await nonce_manager.initialize()
     
@@ -604,4 +601,3 @@ if __name__ == "__main__":
         logging.info("\n--- تم إيقاف البوت يدويًا ---")
     except Exception:
         logging.critical(f"❌ خطأ فادح في البرنامج الرئيسي:", exc_info=True)
-
