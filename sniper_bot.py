@@ -1,5 +1,6 @@
 # =================================================================
-# صياد الدرر: v4.9 (النسخة النهائية الكاملة) - إصلاح الاتصال
+# صياد الدرر: v5.0 (إصلاح نهائي ومستقر)
+# إصلاح مشكلة توافق web3.py بشكل جذري
 # =================================================================
 
 import os
@@ -10,7 +11,9 @@ import logging
 from typing import Dict, List, Any
 
 from dotenv import load_dotenv
-from web3 import Web3, AsyncWeb3, AsyncWebsocketProvider
+from web3 import Web3, AsyncWeb3
+from web3.providers.rpc import HTTPProvider
+from web3.providers.websocket import WebsocketProvider
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import (Application, CommandHandler, CallbackQueryHandler, 
                           ContextTypes, ConversationHandler, MessageHandler, filters)
@@ -71,6 +74,7 @@ logging.info("✅ تم تحميل الإعدادات المحصّنة بنجاح
 (SELECTING_SETTING, TYPING_VALUE) = range(2)
 
 class واجهة_التليجرام:
+    # ... الكود هنا لم يتغير ...
     def __init__(self, token, admin_id, bot_state, guardian_ref):
         self.application = Application.builder().token(token).build()
         self.admin_id = admin_id
@@ -248,7 +252,7 @@ class واجهة_التليجرام:
         return ConversationHandler.END
 
     async def run(self):
-        await self.send_message("✅ <b>تم تشغيل بوت صياد الدرر (v4.9) بنجاح!</b>")
+        await self.send_message("✅ <b>تم تشغيل بوت صياد الدرر (v5.0) بنجاح!</b>")
         await self.application.initialize()
         await self.application.start()
         await self.application.updater.start_polling()
@@ -257,6 +261,7 @@ class واجهة_التليجرام:
 # 5. الوحدات الأساسية (كاملة ومحدثة)
 # =================================================================
 class مدير_الـNonce:
+    # ... الكود هنا لم يتغير ...
     def __init__(self, w3: AsyncWeb3, address: str, filename="nonce.txt"):
         self.w3 = w3
         self.address = Web3.to_checksum_address(address)
@@ -284,33 +289,34 @@ class مدير_الـNonce:
             return current_nonce
 
 class الراصد:
-    def __init__(self, w3: AsyncWeb3):
-        self.w3 = w3
-        self.factory_contract = self.w3.eth.contract(address=Web3.to_checksum_address(FACTORY_ADDRESS), abi=FACTORY_ABI)
-        logging.info("✅ الراصد متصل وجاهز للاستماع.")
-    async def استمع_للمجمعات_الجديدة(self, handler_func: callable):
-        event_filter = await self.factory_contract.events.PairCreated.create_filter(from_block='latest')
-        logging.info("👂 بدء الاستماع لحدث PairCreated...")
+    def __init__(self, node_url: str, main_loop: asyncio.AbstractEventLoop):
+        # <<< تغيير: يستخدم اتصال WebSocket متزامن ومستقل >>>
+        self.w3_sync = Web3(WebsocketProvider(node_url))
+        self.factory_contract = self.w3_sync.eth.contract(address=Web3.to_checksum_address(FACTORY_ADDRESS), abi=FACTORY_ABI)
+        self.main_loop = main_loop
+        logging.info("✅ الراصد متصل وجاهز للاستماع (باستخدام اتصال WebSocket مستقل).")
+
+    def استمع_للمجمعات_الجديدة(self, handler_func: callable):
+        event_filter = self.factory_contract.events.PairCreated.create_filter(fromBlock='latest')
+        logging.info("👂 بدء الاستماع لحدث PairCreated (في مسار منفصل)...")
         while True:
             try:
-                new_entries = await event_filter.get_new_entries()
-                for event in new_entries:
+                for event in event_filter.get_new_entries():
                     pair_address = event['args']['pair']
                     token0 = event['args']['token0']
                     token1 = event['args']['token1']
                     new_token = token1 if token0.lower() == WBNB_ADDRESS.lower() else token0
                     logging.info(f"🔔 تم اكتشاف مجمع جديد: {pair_address} | العملة: {new_token}")
-                    asyncio.create_task(handler_func(pair_address, new_token))
+                    
+                    # <<< تغيير: استدعاء الدالة غير المتزامنة بأمان من المسار المنفصل >>>
+                    asyncio.run_coroutine_threadsafe(handler_func(pair_address, new_token), self.main_loop)
             except Exception as e:
                 logging.warning(f"⚠️ خطأ أثناء الاستماع في الراصد: {e}")
-                if 'filter not found' in str(e).lower():
-                    logging.info("   [الراصد] الفلتر غير موجود، سيتم إعادة إنشائه...")
-                    event_filter = await self.factory_contract.events.PairCreated.create_filter(from_block='latest')
-                else:
-                    await asyncio.sleep(5)
-            await asyncio.sleep(2)
+                time.sleep(5) # انتظر قبل إعادة المحاولة
+            time.sleep(2)
 
 class المدقق:
+    # ... الكود هنا لم يتغير ...
     def __init__(self, w3: AsyncWeb3, telegram_interface: واجهة_التليجرام, bot_state: Dict):
         self.w3 = w3
         self.router_contract = self.w3.eth.contract(address=Web3.to_checksum_address(ROUTER_ADDRESS), abi=ROUTER_ABI)
@@ -356,6 +362,7 @@ class المدقق:
         return True
 
 class القناص:
+    # ... الكود هنا لم يتغير ...
     def __init__(self, w3: AsyncWeb3, nonce_manager: مدير_الـNonce, telegram_interface: واجهة_التليجرام, bot_state: Dict):
         self.w3 = w3
         self.nonce_manager = nonce_manager
@@ -434,6 +441,7 @@ class القناص:
             return {"success": False}
 
 class الحارس:
+    # ... الكود هنا لم يتغير ...
     def __init__(self, w3: AsyncWeb3, nonce_manager: مدير_الـNonce, telegram_interface: واجهة_التليجرام, bot_state: Dict):
         self.w3 = w3
         self.nonce_manager = nonce_manager
@@ -550,7 +558,7 @@ async def process_new_token(pair_address, token_address, verifier, sniper, guard
         logging.warning(f"🔻 [مهمة منتهية] تم تجاهل العملة {token_address} (لم تجتز الفحص).")
 
 async def main():
-    logging.info("--- بدأ تشغيل بوت صياد الدرر (v4.9 النسخة النهائية) ---")
+    logging.info("--- بدأ تشغيل بوت صياد الدرر (v5.0 النسخة النهائية) ---")
     
     bot_state = {
         'is_paused': False,
@@ -566,11 +574,16 @@ async def main():
         'STOP_LOSS_THRESHOLD': int(os.getenv('STOP_LOSS_THRESHOLD', '-50')),
     }
     
-    w3 = AsyncWeb3(AsyncWebsocketProvider(NODE_URL))
+    # <<< تغيير: استخدام HTTPProvider للعمليات غير المتزامنة >>>
+    http_node_url = NODE_URL.replace("wss://", "https://").replace("ws://", "http://")
+    w3 = AsyncWeb3(HTTPProvider(http_node_url))
+    
     is_connected = await w3.is_connected()
     if not is_connected:
         logging.critical("❌ لا يمكن الاتصال بالشبكة. يتم الخروج."); return
 
+    main_loop = asyncio.get_running_loop()
+    
     nonce_manager = مدير_الـNonce(w3, WALLET_ADDRESS)
     await nonce_manager.initialize()
     
@@ -578,18 +591,21 @@ async def main():
     telegram_interface = واجهة_التليجرام(TELEGRAM_BOT_TOKEN, TELEGRAM_ADMIN_CHAT_ID, bot_state, guardian)
     guardian.telegram = telegram_interface
 
-    watcher = الراصد(w3)
+    # <<< تغيير: إنشاء الراصد باتصال WebSocket منفصل >>>
+    watcher = الراصد(NODE_URL, main_loop)
     verifier = المدقق(w3, telegram_interface, bot_state)
     sniper = القناص(w3, nonce_manager, telegram_interface, bot_state)
     
     async def new_pool_handler(pair, token):
-        asyncio.create_task(process_new_token(pair, token, verifier, sniper, guardian, bot_state, telegram_interface))
+        # لم نعد نستخدم create_task هنا لأن الاستدعاء يأتي من مسار منفصل
+        await process_new_token(pair, token, verifier, sniper, guardian, bot_state, telegram_interface)
 
     logging.info("🚀 البوت جاهز على خط الانطلاق...")
     
     telegram_task = asyncio.create_task(telegram_interface.run())
     guardian_task = asyncio.create_task(guardian.monitor_trades())
-    watcher_task = asyncio.create_task(watcher.استمع_للمجمعات_الجديدة(new_pool_handler))
+    # <<< تغيير: تشغيل الراصد في مسار منفصل لضمان الاستقرار >>>
+    watcher_task = asyncio.to_thread(watcher.استمع_للمجمعات_الجديدة, new_pool_handler)
     
     await asyncio.gather(telegram_task, guardian_task, watcher_task)
 
