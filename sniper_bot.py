@@ -586,11 +586,11 @@ async def main():
     # --- [الإصلاح النهائي الحقيقي] الطريقة الصحيحة للاتصال في Web3 v7+ ---
     if NODE_URL.startswith("wss://"):
         logging.info("🔌 الاتصال باستخدام Websocket...")
-        # ✅ **التعديل الصحيح هنا**
-        provider = AsyncWeb3.WebsocketProvider(NODE_URL)
+        # ✅ **التصحيح النهائي والدقيق هنا (WebSocketProvider)**
+        provider = AsyncWeb3.WebSocketProvider(NODE_URL)
     else:
         logging.info("📡 الاتصال باستخدام HTTP...")
-        # ✅ **التعديل الصحيح هنا**
+        # ✅ **التصحيح النهائي والدقيق هنا (HTTPProvider)**
         provider = AsyncWeb3.HTTPProvider(NODE_URL)
     
     w3 = AsyncWeb3(provider)
