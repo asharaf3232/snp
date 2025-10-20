@@ -45,7 +45,8 @@ ERC20_ABI = json.loads('[{"constant":true,"inputs":[],"name":"decimals","outputs
 # 3. الإعدادات المركزية
 # =================================================================
 load_dotenv()
-NODE_URL = os.getenv('NODE_URL')
+# NODE_URL = os.getenv('NODE_URL')  # <-- قم بإضافة # هنا
+NODE_URL = "wss://autumn-few-forest.bsc.quiknode.pro/21246387b2d21db2111333d83458d3c203f5670b/" # <-- أضف هذا السطر
 WALLET_ADDRESS = os.getenv('WALLET_ADDRESS')
 PRIVATE_KEY = os.getenv('PRIVATE_KEY', '')
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
