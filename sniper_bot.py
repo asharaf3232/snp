@@ -9,11 +9,10 @@ import logging
 from typing import Dict, List, Any, Tuple
 
 from dotenv import load_dotenv
-# --- التعديلات النهائية المبنية على الاستكشاف ---
+# --- التعديلات النهائية لتوافق web3 v6 ---
 from web3 import AsyncWeb3
-from web3.middleware.proof_of_authority import ExtraDataToPOAMiddleware
-from web3.providers import WebSocketProvider # <-- هذا هو السطر الصحيح
-
+from web3.middleware.geth_poa import geth_poa_middleware # <-- السطر الصحيح لـ v6
+from web3.providers import WebSocketProvider
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import (Application, CommandHandler, CallbackQueryHandler,
                           ContextTypes, ConversationHandler, MessageHandler, filters)
@@ -579,7 +578,7 @@ async def process_new_token(pair_address, token_address, verifier, sniper, guard
              await telegram_if.send_message(f"⚪️ <b>تم تجاهل عملة</b>\n\n<code>{token_address}</code>\n\n<b>السبب:</b> {reason}")
 
 async def main():
-    logging.info("--- بدء تشغيل بوت صياد الدرر (v5.9 - النسخة النهائية والمصححة) ---")
+    logging.info("--- بدء تشغيل بوت صياد الدرر (v6 Stable) ---")
 
     bot_state = {
         'is_paused': False,
@@ -596,17 +595,16 @@ async def main():
         'STOP_LOSS_THRESHOLD': int(os.getenv('STOP_LOSS_THRESHOLD', '-50')),
     }
 
-    # --- الحل النهائي المبني على الدليل القاطع ---
-    provider = WebSocketProvider(NODE_URL, websocket_kwargs={'ping_timeout': 30})
+    provider = WebSocketProvider(NODE_URL)
     w3 = AsyncWeb3(provider)
-    w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
-    
-    # --- التعديل الأخير والنهائي: نعطي الاتصال فرصة للبدء ثم نتحقق منه ---
+    # --- استخدام Middleware الصحيح لـ v6 ---
+    w3.middleware_onion.inject(geth_poa_middleware, layer=0)
+
     logging.info("⏳ جاري تأسيس الاتصال بالشبكة...")
-    await asyncio.sleep(5) # انتظر 5 ثوانٍ للسماح للاتصال بالاستقرار
+    await asyncio.sleep(2) # تأخير بسيط يساعد على استقرار الاتصال الأولي
 
     if not await w3.is_connected():
-        logging.critical("❌ فشل الاتصال بالشبكة (WSS) بعد فترة الانتظار. تأكد من صحة NODE_URL. يتم الخروج."); return
+        logging.critical("❌ فشل الاتصال بالشبكة (WSS). تأكد من صحة NODE_URL. يتم الخروج."); return
 
     logging.info("✅ تم تأسيس الاتصال بالشبكة بنجاح!")
 
