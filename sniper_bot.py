@@ -610,8 +610,7 @@ async def main():
     }
     
     # --- تعديل حاسم: استخدام AsyncWebsocketProvider ---
-    provider = AsyncWebsocketProvider(NODE_URL)
-    w3 = AsyncWeb3(provider)
+    w3 = AsyncWeb3(AsyncWeb3.AsyncWebsocketProvider(NODE_URL))
 
     if not await w3.is_connected():
         logging.critical("❌ لا يمكن الاتصال بالشبكة (WSS) عند البدء. تأكد من صحة NODE_URL. يتم الخروج."); return
