@@ -11,7 +11,7 @@ from typing import Dict, List, Any, Tuple
 from dotenv import load_dotenv
 # --- التعديلات النهائية لتوافق web3 v6 ---
 from web3 import AsyncWeb3
-from web3.middleware.geth_poa import geth_poa_middleware
+from web3.middleware.geth_poa import async_geth_poa_middleware
 from web3.providers.websocket import WebsocketProviderV2 # <-- الإصلاح الصحيح
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
@@ -658,12 +658,12 @@ async def main():
     provider = WebsocketProviderV2(NODE_URL) # <-- الإصلاح الصحيح
     w3 = AsyncWeb3(provider)
     # --- استخدام Middleware الصحيح لـ v6 ---
-    w3.middleware_onion.inject(geth_poa_middleware, layer=0)
+    w3.middleware_onion.inject(async_geth_poa_middleware, layer=0)
 
     logging.info("⏳ جاري تأسيس الاتصال بالشبكة...")
     await asyncio.sleep(2) # تأخير بسيط يساعد على استقرار الاتصال الأولي
 
-    if not w3.is_connected(): # لاحظ: بدون await
+   if not await w3.is_connected(): # <-- الإصلاح هنا
         logging.critical("❌ فشل الاتصال بالشبكة (WSS). تأكد من صحة NODE_URL. يتم الخروج."); return
 
     logging.info("✅ تم تأسيس الاتصال بالشبكة بنجاح!")
