@@ -280,7 +280,8 @@ class مدير_الـNonce:
         with open(self.filename, 'w') as f: f.write(str(nonce_to_save))
     async def initialize(self):
         async with self.lock:
-            chain_nonce = await self.w3.eth.get_transaction_count(self.address)
+            # --- التعديل: تم حذف await ---
+            chain_nonce = self.w3.eth.get_transaction_count(self.address)
             file_nonce = self._read_from_file()
             self.nonce = max(chain_nonce, file_nonce)
             self._save_to_file(self.nonce)
@@ -391,8 +392,9 @@ class القناص:
         self.account = self.w3.eth.account.from_key(PRIVATE_KEY)
         logging.info("✅ القناص جاهز (مع غاز ديناميكي).")
 
-    async def _get_dynamic_gas(self) -> int:
-        base_price = await self.w3.eth.gas_price
+    def _get_dynamic_gas(self) -> int:
+        # --- التعديل: تم حذف await ---
+        base_price = self.w3.eth.gas_price
         tip = AsyncWeb3.to_wei(self.bot_state['GAS_PRICE_TIP_GWEI'], 'gwei')
         return base_price + tip
 
@@ -402,9 +404,10 @@ class القناص:
             checksum_token = AsyncWeb3.to_checksum_address(token_address)
             token_contract = self.w3.eth.contract(address=checksum_token, abi=ERC20_ABI)
             max_amount = 2**256 - 1
-            approve_tx = await token_contract.functions.approve(ROUTER_ADDRESS, max_amount).build_transaction({
+            # --- التعديل: تم حذف async/await من هنا لأن بناء المعاملة أصبح متزامنًا ---
+            approve_tx = token_contract.functions.approve(ROUTER_ADDRESS, max_amount).build_transaction({
                 'from': self.account.address,
-                'gasPrice': await self._get_dynamic_gas(),
+                'gasPrice': self._get_dynamic_gas(),
                 'gas': 100000,
                 'nonce': await self.nonce_manager.get_next()
             })
@@ -421,16 +424,16 @@ class القناص:
             bnb_amount_wei = AsyncWeb3.to_wei(self.bot_state['BUY_AMOUNT_BNB'], 'ether')
             path = [WBNB_ADDRESS, AsyncWeb3.to_checksum_address(token_address)]
 
-            amounts_out = await self.router_contract.functions.getAmountsOut(bnb_amount_wei, path).call()
+            amounts_out = self.router_contract.functions.getAmountsOut(bnb_amount_wei, path).call()
             min_tokens = int(amounts_out[1] * (1 - (self.bot_state['SLIPPAGE_LIMIT'] / 100)))
 
             tx_params = {
                 'from': self.account.address, 'value': bnb_amount_wei,
-                'gas': self.bot_state['GAS_LIMIT'], 'gasPrice': await self._get_dynamic_gas(),
+                'gas': self.bot_state['GAS_LIMIT'], 'gasPrice': self._get_dynamic_gas(),
                 'nonce': await self.nonce_manager.get_next(),
             }
 
-            tx = await self.router_contract.functions.swapExactETHForTokens(
+            tx = self.router_contract.functions.swapExactETHForTokens(
                 min_tokens, path, self.account.address, int(time.time()) + 120
             ).build_transaction(tx_params)
 
@@ -443,7 +446,7 @@ class القناص:
                 logging.info(f"💰 نجحت عملية الشراء! تم قنص {token_address}.")
                 asyncio.create_task(self._approve_max(token_address))
                 token_contract = self.w3.eth.contract(address=AsyncWeb3.to_checksum_address(token_address), abi=ERC20_ABI)
-                decimals = await token_contract.functions.decimals().call()
+                decimals = token_contract.functions.decimals().call()
                 amount_bought_wei = amounts_out[1]
                 buy_price = self.bot_state['BUY_AMOUNT_BNB'] / (amount_bought_wei / (10**decimals)) if amount_bought_wei > 0 else 0
 
@@ -457,7 +460,6 @@ class القناص:
         except Exception:
             logging.exception(f"❌ خطأ في تنفيذ الشراء:")
             return {"success": False}
-
 class الحارس:
     def __init__(self, w3: AsyncWeb3, nonce_manager: "مدير_الـNonce", telegram_interface: "واجهة_التليجرام", bot_state: Dict):
         self.w3 = w3
