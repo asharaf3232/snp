@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 # --- التعديلات النهائية لتوافق web3 v6 ---
 from web3 import AsyncWeb3
 from web3.middleware.geth_poa import geth_poa_middleware # <-- السطر الصحيح لـ v6
-from web3.providers import WebSocketProvider
+from web3.providers import WebsocketProvider
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import (Application, CommandHandler, CallbackQueryHandler,
                           ContextTypes, ConversationHandler, MessageHandler, filters)
@@ -595,7 +595,7 @@ async def main():
         'STOP_LOSS_THRESHOLD': int(os.getenv('STOP_LOSS_THRESHOLD', '-50')),
     }
 
-    provider = WebSocketProvider(NODE_URL)
+    provider = WebsocketProvider(NODE_URL)
     w3 = AsyncWeb3(provider)
     # --- استخدام Middleware الصحيح لـ v6 ---
     w3.middleware_onion.inject(geth_poa_middleware, layer=0)
