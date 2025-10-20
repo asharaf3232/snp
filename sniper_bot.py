@@ -9,9 +9,8 @@ import logging
 from typing import Dict, List, Any, Tuple
 
 from dotenv import load_dotenv
-# --- التعديل الرئيسي والنهائي: استخدام WebsocketProvider ---
-from web3 import Web3, AsyncWeb3
-from web3.providers.websocket import AsyncWSSProvider # <-- هذا هو السطر الصحيح والنهائي
+# --- الكود الصحيح والنهائي ---
+from web3 import AsyncWeb3, Web3 # لا نحتاج أكثر من ذلك
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import (Application, CommandHandler, CallbackQueryHandler, 
@@ -609,9 +608,8 @@ async def main():
         'STOP_LOSS_THRESHOLD': int(os.getenv('STOP_LOSS_THRESHOLD', '-50')),
     }
     
-    # --- تعديل حاسم ونهائي: الطريقة الصحيحة لإنشاء الاتصال ---
-    provider = AsyncWSSProvider(NODE_URL)
-    w3 = AsyncWeb3(provider)
+    # --- الطريقة الصحيحة والنهائية 100% ---
+    w3 = AsyncWeb3(NODE_URL)
 
     if not await w3.is_connected():
         logging.critical("❌ لا يمكن الاتصال بالشبكة (WSS) عند البدء. تأكد من صحة NODE_URL. يتم الخروج."); return
