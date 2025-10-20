@@ -597,7 +597,7 @@ async def main():
     }
 
     # --- الحل النهائي المبني على الدليل القاطع ---
-    provider = WebSocketProvider(NODE_URL)
+    provider = WebSocketProvider(NODE_URL, websocket_timeout=30)
     w3 = AsyncWeb3(provider)
     w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
 
