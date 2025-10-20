@@ -655,10 +655,10 @@ async def main():
         'STOP_LOSS_THRESHOLD': int(os.getenv('STOP_LOSS_THRESHOLD', '-50')),
     }
 
-    # --- تعديل للتعامل مع مشاكل SSL ---
-    ssl_context = ssl.create_default_context(cafile=certifi.where())
-    provider = WebsocketProviderV2(NODE_URL, websocket_kwargs={'ssl': ssl_context})
-    # --- نهاية التعديل ---
+         # --- تعديل لتجاوز التحقق من SSL (للتشخيص) ---
+        ssl_context = ssl._create_unverified_context()
+        provider = WebsocketProviderV2(NODE_URL, websocket_kwargs={'ssl': ssl_context})
+      # --- نهاية التعديل ---
     
     w3 = AsyncWeb3(provider)
     
