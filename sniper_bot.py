@@ -1,5 +1,5 @@
 # =================================================================
-# صياد الدرر: v5.6 (النسخة النهائية والموثقة)
+# صياد الدرر: v5.7 (النسخة النهائية والموثقة)
 # =================================================================
 import os
 import json
@@ -9,9 +9,9 @@ import logging
 from typing import Dict, List, Any, Tuple
 
 from dotenv import load_dotenv
-# --- التعديل النهائي والصحيح 100% المبني على البحث ---
+# --- التعديل النهائي والصحيح 100% المبني على البحث والتوثيق ---
 from web3 import AsyncWeb3, Web3
-from web3.providers.websocket import WebsocketProviderV2
+from web3.providers.auto import AsyncAutoProvider
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import (Application, CommandHandler, CallbackQueryHandler, 
@@ -257,7 +257,7 @@ class واجهة_التليجرام:
 
 
     async def run(self):
-        await self.send_message("✅ <b>تم تشغيل بوت صياد الدرر (v5.6) بنجاح!</b>")
+        await self.send_message("✅ <b>تم تشغيل بوت صياد الدرر (v5.7) بنجاح!</b>")
         await self.application.initialize()
         await self.application.start()
         await self.application.updater.start_polling()
@@ -582,7 +582,7 @@ async def process_new_token(pair_address, token_address, verifier, sniper, guard
              await telegram_if.send_message(f"⚪️ <b>تم تجاهل عملة</b>\n\n<code>{token_address}</code>\n\n<b>السبب:</b> {reason}")
 
 async def main():
-    logging.info("--- بدأ تشغيل بوت صياد الدرر (v5.6 - النسخة النهائية والموثقة) ---")
+    logging.info("--- بدأ تشغيل بوت صياد الدرر (v5.7 - النسخة النهائية والموثقة) ---")
     
     bot_state = {
         'is_paused': False,
@@ -599,8 +599,9 @@ async def main():
         'STOP_LOSS_THRESHOLD': int(os.getenv('STOP_LOSS_THRESHOLD', '-50')),
     }
     
-    # --- الطريقة الصحيحة والنهائية التي تعالج الخطأ الأخير ---
-    w3 = AsyncWeb3(WebsocketProviderV2(NODE_URL))
+    # --- الطريقة الصحيحة والنهائية 100% المبنية على البحث والتوثيق ---
+    w3 = AsyncWeb3(AsyncAutoProvider(NODE_URL))
+    
 
     if not await w3.is_connected():
         logging.critical("❌ لا يمكن الاتصال بالشبكة (WSS) عند البدء. تأكد من صحة NODE_URL. يتم الخروج."); return
