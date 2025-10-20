@@ -1,5 +1,5 @@
 # =================================================================
-# صياد الدرر: v5.7 (النسخة النهائية والموثقة)
+# صياد الدرر: v5.8 (النسخة النهائية والصحيحة)
 # =================================================================
 import os
 import json
@@ -9,9 +9,9 @@ import logging
 from typing import Dict, List, Any, Tuple
 
 from dotenv import load_dotenv
-# --- التعديل النهائي والصحيح 100% المبني على البحث والتوثيق ---
+# --- التعديل النهائي والصحيح 100% المبني على التوثيق الرسمي ---
 from web3 import AsyncWeb3, Web3
-from web3.providers.auto import AsyncAutoProvider
+from web3.providers.websocket.v2 import AsyncWebsocketProviderV2
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import (Application, CommandHandler, CallbackQueryHandler, 
@@ -250,14 +250,14 @@ class واجهة_التليجرام:
             await update.message.reply_text(f"✅ تم تحديث {setting_key} إلى: {new_value}", reply_markup=self._get_main_keyboard())
             logging.info(f"⚙️ تم تغيير {setting_key} ديناميكياً إلى {new_value}.")
         except (ValueError, KeyError):
-            await update.message.reply_text("❌ قيمة غير صالحة. يرجى إدخال رقم صحيح.", reply_markup=self._get_main_keyboard())
+            await update.message.reply_text("❌ قيمة غير صالحة. يجىر إدخال رقم صحيح.", reply_markup=self._get_main_keyboard())
 
         await self.start(update, context)
         return ConversationHandler.END
 
 
     async def run(self):
-        await self.send_message("✅ <b>تم تشغيل بوت صياد الدرر (v5.7) بنجاح!</b>")
+        await self.send_message("✅ <b>تم تشغيل بوت صياد الدرر (v5.8) بنجاح!</b>")
         await self.application.initialize()
         await self.application.start()
         await self.application.updater.start_polling()
@@ -556,7 +556,7 @@ class الحارس:
                     logging.info(f"🎯 [الحارس] تفعيل الهدف الثاني للربح لـ {trade['token_address']}")
                     if await self._execute_sell(trade, trade['remaining_amount_wei']): self.active_trades.remove(trade)
                 if profit <= self.bot_state['STOP_LOSS_THRESHOLD']:
-                    logging.warning(f"🚨 [الحارس] تفعيل وقف الخسارة لـ {trade['token_address']}")
+                    logging.warning(f"🚨 [الحارس] تفعيل وقف الخsارة لـ {trade['token_address']}")
                     if await self._execute_sell(trade, trade['remaining_amount_wei']): self.active_trades.remove(trade)
             await asyncio.sleep(5)
 
