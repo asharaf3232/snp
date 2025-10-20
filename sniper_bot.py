@@ -10,7 +10,7 @@ from typing import Dict, List, Any, Tuple
 
 from dotenv import load_dotenv
 # --- الكود الصحيح والنهائي ---
-from web3 import AsyncWeb3, Web3 # لا نحتاج أكثر من ذلك
+from web3 import AsyncWeb3, Web3, AsyncWebsocketProvider
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import (Application, CommandHandler, CallbackQueryHandler, 
@@ -608,8 +608,9 @@ async def main():
         'STOP_LOSS_THRESHOLD': int(os.getenv('STOP_LOSS_THRESHOLD', '-50')),
     }
     
-    # --- الطريقة الصحيحة والنهائية 100% ---
-    w3 = AsyncWeb3(NODE_URL)
+    # --- الطريقة الصحيحة والنهائية التي تعالج الخطأ الأخير ---
+    provider = AsyncWebsocketProvider(NODE_URL)
+    w3 = AsyncWeb3(provider)
 
     if not await w3.is_connected():
         logging.critical("❌ لا يمكن الاتصال بالشبكة (WSS) عند البدء. تأكد من صحة NODE_URL. يتم الخروج."); return
@@ -636,7 +637,6 @@ async def main():
     health_check_task = asyncio.create_task(watcher.check_connection_periodically())
     
     await asyncio.gather(telegram_task, guardian_task, watcher_task, health_check_task)
-
 if __name__ == "__main__":
     try:
         asyncio.run(main())
