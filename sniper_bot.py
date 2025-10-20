@@ -1,7 +1,6 @@
 # =================================================================
 # صياد الدرر: v5.4 (إصدار WebSocket الاحترافي)
 # =================================================================
-
 import os
 import json
 import time
@@ -12,8 +11,7 @@ from typing import Dict, List, Any, Tuple
 from dotenv import load_dotenv
 # --- التعديل الرئيسي: استخدام WebsocketProvider ---
 from web3 import Web3, AsyncWeb3
-from web3.providers.async_rpc import AsyncHTTPProvider
-from web3.providers.async_ws import AsyncWebsocketProvider
+# تم حذف السطر الخاطئ من هنا
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import (Application, CommandHandler, CallbackQueryHandler, 
                           ContextTypes, ConversationHandler, MessageHandler, filters)
