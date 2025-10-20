@@ -656,9 +656,9 @@ async def main():
     }
 
          # --- تعديل لتجاوز التحقق من SSL (للتشخيص) ---
-        ssl_context = ssl._create_unverified_context()
-        provider = WebsocketProviderV2(NODE_URL, websocket_kwargs={'ssl': ssl_context})
-      # --- نهاية التعديل ---
+         ssl_context = ssl._create_unverified_context()
+         provider = WebsocketProviderV2(NODE_URL, websocket_kwargs={'ssl': ssl_context})
+         # --- نهاية التعديل ---
     
     w3 = AsyncWeb3(provider)
     
