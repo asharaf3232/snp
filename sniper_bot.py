@@ -653,7 +653,7 @@ async def main():
         'STOP_LOSS_THRESHOLD': int(os.getenv('STOP_LOSS_THRESHOLD', '-50')),
     }
 
-    }
+   
 
     provider = AsyncWebsocketProvider(NODE_URL) # <-- الإصلاح هنا
     w3 = AsyncWeb3(provider)
