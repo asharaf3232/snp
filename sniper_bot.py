@@ -1,5 +1,5 @@
 # =================================================================
-# صياد الدرر: v9.0 (الإصلاح النهائي والأخير لـ Web3 v7)
+# صياد الدرر: v10.0 (الإصلاح النهائي والمنطقي)
 # =================================================================
 
 import os
@@ -8,12 +8,16 @@ import time
 import asyncio
 import logging
 from typing import Dict, List, Any, Tuple
-import websockets
+
+# --- ✅✅✅ [الإصلاح المنطقي الحاسم] ✅✅✅ ---
+# يجب تحميل متغيرات البيئة أولاً وقبل كل شيء آخر.
 from dotenv import load_dotenv
+load_dotenv()
+# --------------------------------------------------
+
 from web3 import Web3, AsyncWeb3
-from web3.providers.persistent import PersistentWebSocketProvider
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
-from telegram.ext import (Application, CommandHandler, CallbackQueryHandler, 
+from telegram.ext import (Application, CommandHandler, CallbackQueryHandler,
                           ContextTypes, ConversationHandler, MessageHandler, filters)
 from telegram.constants import ParseMode
 
@@ -30,17 +34,8 @@ logging.basicConfig(
 )
 
 # =================================================================
-# 2. واجهات العقود الذكية (ABIs)
+# 2. الإعدادات المركزية (تقرأ بعد أن تم تحميلها بنجاح)
 # =================================================================
-FACTORY_ABI = json.loads('[{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"token0","type":"address"},{"indexed":true,"internalType":"address","name":"token1","type":"address"},{"indexed":false,"internalType":"address","name":"pair","type":"address"},{"indexed":false,"internalType":"uint256","name":"","type":"uint256"}],"name":"PairCreated","type":"event"}]')
-PAIR_ABI = json.loads('[{"constant":true,"inputs":[],"name":"getReserves","outputs":[{"internalType":"uint112","name":"_reserve0","type":"uint112"},{"internalType":"uint112","name":"_reserve1","type":"uint112"},{"internalType":"uint32","name":"_blockTimestampLast","type":"uint32"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"token0","outputs":[{"internalType":"address","name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"}]')
-ROUTER_ABI = json.loads('[{"inputs":[{"internalType":"uint256","name":"amountIn","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"}],"name":"getAmountsOut","outputs":[{"internalType":"uint256[]","name":"amounts","type":"uint256[]"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"amountOutMin","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"swapExactETHForTokens","outputs":[{"internalType":"uint256[]","name":"amounts","type":"uint256[]"}],"stateMutability":"payable","type":"function"},{"inputs":[{"internalType":"uint256","name":"amountIn","type":"uint256"},{"internalType":"uint256","name":"amountOutMin","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"swapExactTokensForETHSupportingFeeOnTransferTokens","outputs":[],"stateMutability":"nonpayable","type":"function"}]')
-ERC20_ABI = json.loads('[{"constant":true,"inputs":[],"name":"decimals","outputs":[{"name":"","type":"uint8"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"_spender","type":"address"},{"name":"_value","type":"uint256"}],"name":"approve","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[{"name":"_owner","type":"address"}],"name":"balanceOf","outputs":[{"name":"balance","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"}]')
-
-# =================================================================
-# 3. الإعدادات المركزية
-# =================================================================
-load_dotenv()
 NODE_URL = os.getenv('NODE_URL')
 WALLET_ADDRESS = os.getenv('WALLET_ADDRESS')
 PRIVATE_KEY = os.getenv('PRIVATE_KEY', '')
@@ -54,6 +49,15 @@ if not all([NODE_URL, WALLET_ADDRESS, PRIVATE_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_
     raise ValueError("❌ تأكد من تعيين كل المتغيرات المطلوبة في ملف .env!")
 logging.info("✅ تم تحميل الإعدادات المحصّنة بنجاح.")
 
+
+# =================================================================
+# 3. واجهات العقود الذكية (ABIs)
+# =================================================================
+FACTORY_ABI = json.loads('[{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"token0","type":"address"},{"indexed":true,"internalType":"address","name":"token1","type":"address"},{"indexed":false,"internalType":"address","name":"pair","type":"address"},{"indexed":false,"internalType":"uint256","name":"","type":"uint256"}],"name":"PairCreated","type":"event"}]')
+PAIR_ABI = json.loads('[{"constant":true,"inputs":[],"name":"getReserves","outputs":[{"internalType":"uint112","name":"_reserve0","type":"uint112"},{"internalType":"uint112","name":"_reserve1","type":"uint112"},{"internalType":"uint32","name":"_blockTimestampLast","type":"uint32"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"token0","outputs":[{"internalType":"address","name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"}]')
+ROUTER_ABI = json.loads('[{"inputs":[{"internalType":"uint256","name":"amountIn","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"}],"name":"getAmountsOut","outputs":[{"internalType":"uint256[]","name":"amounts","type":"uint256[]"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"amountOutMin","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"swapExactETHForTokens","outputs":[{"internalType":"uint256[]","name":"amounts","type":"uint256[]"}],"stateMutability":"payable","type":"function"},{"inputs":[{"internalType":"uint256","name":"amountIn","type":"uint256"},{"internalType":"uint256","name":"amountOutMin","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"swapExactTokensForETHSupportingFeeOnTransferTokens","outputs":[],"stateMutability":"nonpayable","type":"function"}]')
+ERC20_ABI = json.loads('[{"constant":true,"inputs":[],"name":"decimals","outputs":[{"name":"","type":"uint8"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"_spender","type":"address"},{"name":"_value","type":"uint256"}],"name":"approve","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[{"name":"_owner","type":"address"}],"name":"balanceOf","outputs":[{"name":"balance","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"}]')
+
 # =================================================================
 # 4. فئة واجهة التليجرام (كاملة ومحدثة)
 # =================================================================
@@ -65,7 +69,7 @@ class واجهة_التليجرام:
         self.admin_id = admin_id
         self.bot_state = bot_state
         self.guardian = guardian_ref
-        
+
         settings_conv_handler = ConversationHandler(
             entry_points=[MessageHandler(filters.Regex('^⚙️ الإعدادات$'), self.settings_menu)],
             states={
@@ -142,7 +146,7 @@ class واجهة_التليجرام:
             for trade in self.guardian.active_trades:
                 profit = trade.get('current_profit', 0)
                 status_text += f"<b>- <code>{trade['token_address']}</code>:</b> {profit:.2f}%\n"
-        
+
         status_text += "-----------------------------------\n"
         status_text += "<b>⚙️ إعدادات التداول:</b>\n"
         s = self.bot_state
@@ -207,7 +211,7 @@ class واجهة_التليجرام:
         await query.answer()
         setting_key = query.data.replace('change_', '')
         context.user_data['setting_to_change'] = setting_key
-        
+
         prompts = {
             "BUY_AMOUNT_BNB": "يرجى إرسال مبلغ الشراء الجديد بالـ BNB (مثال: 0.01):",
             "GAS_PRICE_TIP_GWEI": "يرجى إرسال إكرامية الغاز الجديدة بالـ Gwei (مثال: 1):",
@@ -242,7 +246,7 @@ class واجهة_التليجرام:
         return ConversationHandler.END
 
     async def run(self):
-        await self.send_message("✅ <b>تم تشغيل بوت صياد الدرر (v9.0) بنجاح!</b>")
+        await self.send_message("✅ <b>تم تشغيل بوت صياد الدرر (v10.0) بنجاح!</b>")
         await self.application.initialize()
         await self.application.start()
         await self.application.updater.start_polling()
@@ -283,13 +287,13 @@ class الراصد:
         self.telegram = telegram_interface
         self.factory_contract = self.w3.eth.contract(address=Web3.to_checksum_address(FACTORY_ADDRESS), abi=FACTORY_ABI)
         logging.info("✅ الراصد متصل وجاهز للاستماع والفحص الصحي.")
-    
+
     async def check_connection_periodically(self):
         while True:
             await asyncio.sleep(60)
             try:
-                await asyncio.wait_for(self.w3.eth.block_number, timeout=15.0)
-                logging.info("❤️ [نبض القلب] الاتصال بالشبكة سليم.")
+                block_number = await asyncio.wait_for(self.w3.eth.block_number, timeout=15.0)
+                logging.info(f"❤️ [نبض القلب] الاتصال بالشبكة سليم. آخر بلوك: {block_number}")
             except asyncio.TimeoutError:
                 logging.critical("🚨 [فحص صحي] فشل الاتصال بالشبكة (انتهت المهلة).")
                 await self.telegram.send_message("🚨 <b>انقطاع الاتصال!</b> 🚨\n\nفشل الاتصال بعقدة البلوك تشين (انتهت المهلة). سيستمر البوت في محاولة إعادة الاتصال تلقائياً.")
@@ -315,9 +319,10 @@ class الراصد:
                 logging.warning(f"⚠️ خطأ أثناء الاستماع في الراصد: {e}")
                 if 'filter not found' in str(e).lower():
                     logging.info("   [الراصد] الفلتر غير موجود، سيتم إعادة إنشائه...")
+                    await asyncio.sleep(5) # انتظر قليلاً قبل إعادة الإنشاء
                     event_filter = await self.factory_contract.events.PairCreated.create_filter(from_block='latest')
                 else:
-                    await asyncio.sleep(5)
+                    await asyncio.sleep(10)
             await asyncio.sleep(2)
 
 class المدقق:
@@ -327,7 +332,7 @@ class المدقق:
         self.telegram = telegram_interface
         self.bot_state = bot_state
         logging.info("✅ المدقق جاهز (مع فلترة سيولة ومحاكاة بيع).")
-    
+
     async def فحص_أولي_سريع(self, pair_address: str) -> Tuple[bool, float]:
         logging.info(f"   [فحص سريع] التحقق من سيولة المجمع: {pair_address}")
         try:
@@ -358,16 +363,16 @@ class المدقق:
             error_message = str(e)
             logging.warning(f"   [محاكاة البيع] 🚨🚨🚨 فشلت المحاكاة! على الأغلب Honeypot. الخطأ: {error_message}")
             return False, error_message
-    
+
     async def فحص_شامل(self, pair_address: str, token_address: str) -> Tuple[bool, str]:
         liquidity_passed, wbnb_reserve = await self.فحص_أولي_سريع(pair_address)
         if not liquidity_passed:
             return False, f"سيولة غير كافية ({wbnb_reserve:.2f} BNB)"
-        
+
         sell_sim_passed, error_msg = await self.محاكاة_عملية_بيع(token_address)
         if not sell_sim_passed:
             return False, f"فخ عسل (Honeypot) - {error_msg}"
-            
+
         return True, "اجتاز كل الفحوصات"
 
 class القناص:
@@ -384,7 +389,7 @@ class القناص:
         base_price = await self.w3.eth.gas_price
         tip = Web3.to_wei(self.bot_state['GAS_PRICE_TIP_GWEI'], 'gwei')
         return base_price + tip
-    
+
     async def _approve_max(self, token_address: str):
         logging.info(f"   [موافقة] جاري عمل Approve لكمية لا نهائية لـ {token_address}...")
         try:
@@ -393,8 +398,8 @@ class القناص:
             max_amount = 2**256 - 1
             approve_tx = await token_contract.functions.approve(Web3.to_checksum_address(ROUTER_ADDRESS), max_amount).build_transaction({
                 'from': self.account.address,
-                'gasPrice': await self._get_dynamic_gas(), 
-                'gas': 100000, 
+                'gasPrice': await self._get_dynamic_gas(),
+                'gas': 100000,
                 'nonce': await self.nonce_manager.get_next()
             })
             signed_tx = self.account.sign_transaction(approve_tx)
@@ -409,16 +414,16 @@ class القناص:
             logging.info(f"🚀🚀🚀 بدء عملية قنص وشراء العملة: {token_address} 🚀🚀🚀")
             bnb_amount_wei = Web3.to_wei(self.bot_state['BUY_AMOUNT_BNB'], 'ether')
             path = [Web3.to_checksum_address(WBNB_ADDRESS), Web3.to_checksum_address(token_address)]
-            
+
             amounts_out = await self.router_contract.functions.getAmountsOut(bnb_amount_wei, path).call()
             min_tokens = int(amounts_out[1] * (1 - (self.bot_state['SLIPPAGE_LIMIT'] / 100)))
 
             tx_params = {
                 'from': self.account.address, 'value': bnb_amount_wei,
-                'gas': self.bot_state['GAS_LIMIT'], 'gasPrice': await self._get_dynamic_gas(),
+                'gas': self.bot_state.get('GAS_LIMIT', 600000), 'gasPrice': await self._get_dynamic_gas(),
                 'nonce': await self.nonce_manager.get_next(),
             }
-            
+
             tx = await self.router_contract.functions.swapExactETHForTokens(
                 min_tokens, path, self.account.address, int(time.time()) + 120
             ).build_transaction(tx_params)
@@ -436,7 +441,7 @@ class القناص:
                 amount_bought_wei = amounts_out[1]
                 buy_price = self.bot_state['BUY_AMOUNT_BNB'] / (amount_bought_wei / (10**decimals)) if amount_bought_wei > 0 else 0
 
-                msg = f"💰 <b>نجحت عملية الشراء!</b> 💰\n\n<b>العملة:</b> <code>{token_address}</code>\n<b>المبلغ:</b> {self.bot_state['BUY_AMOUNT_BNB']} BNB\n<b>سعر الشراء:</b> ${buy_price:.10f}\n<b>رابط المعاملة:</b> <a href='https://bscscan.com/tx/{tx_hash.hex()}'>BscScan</a>"
+                msg = f"💰 <b>نجحت عملية الشراء!</b> 💰\n\n<b>العملة:</b> <code>{token_address}</code>\n<b>المبلغ:</b> {self.bot_state['BUY_AMOUNT_BNB']} BNB\n<b>سعر الشراء المقدر:</b> ${buy_price:.10f}\n<b>رابط المعاملة:</b> <a href='https://bscscan.com/tx/{tx_hash.hex()}'>BscScan</a>"
                 await self.telegram.send_message(msg)
 
                 return {"success": True, "token_address": token_address, "buy_price": buy_price, "amount_bought_wei": amount_bought_wei, "decimals": decimals}
@@ -486,7 +491,7 @@ class الحارس:
         try:
             path = [Web3.to_checksum_address(token_address), Web3.to_checksum_address(WBNB_ADDRESS)]
             tx_params = {
-                'from': self.account.address, 'gas': self.bot_state['GAS_LIMIT'], 
+                'from': self.account.address, 'gas': self.bot_state.get('GAS_LIMIT', 600000),
                 'gasPrice': await self._get_dynamic_gas(),
                 'nonce': await self.nonce_manager.get_next()
             }
@@ -497,7 +502,7 @@ class الحارس:
             swap_hash = await self.w3.eth.send_raw_transaction(signed_swap.rawTransaction)
             logging.info(f"   - هاش البيع: {swap_hash.hex()}")
             receipt = await self.w3.eth.wait_for_transaction_receipt(swap_hash, timeout=180)
-            
+
             if receipt['status'] == 1:
                 sell_type = "يدوية" if manual else "تلقائية"
                 msg = f"💸 <b>نجحت عملية البيع ({sell_type})!</b> 💸\n\n<b>العملة:</b> <code>{token_address}</code>\n<b>رابط المعاملة:</b> <a href='https://bscscan.com/tx/{swap_hash.hex()}'>BscScan</a>"
@@ -510,7 +515,7 @@ class الحارس:
         except Exception:
             logging.exception(f"   - ❌ خطأ فادح في عملية البيع:")
             return False
-            
+
     async def manual_sell_token(self, token_address: str) -> bool:
         trade_to_sell = next((t for t in self.active_trades if t['token_address'] == token_address), None)
         if trade_to_sell:
@@ -553,7 +558,7 @@ async def process_new_token(pair_address, token_address, verifier, sniper, guard
     if bot_state['is_paused']:
         return
     logging.info(f"\n[مهمة جديدة] بدأت معالجة العملة: {token_address}")
-    
+
     passed, reason = await verifier.فحص_شامل(pair_address, token_address)
 
     if passed:
@@ -564,17 +569,18 @@ async def process_new_token(pair_address, token_address, verifier, sniper, guard
     else:
         logging.warning(f"🔻 [مهمة منتهية] تم تجاهل {token_address} (السبب: {reason}).")
         if bot_state.get('DEBUG_MODE', False):
-             await telegram_if.send_message(f"⚪️ <b>تم تجاهل عملة</b>\n\n<code>{token_address}</code>\n\n<b>السبب:</b> {reason}")
+              await telegram_if.send_message(f"⚪️ <b>تم تجاهل عملة</b>\n\n<code>{token_address}</code>\n\n<b>السبب:</b> {reason}")
 
 async def main():
-    logging.info(f"DEBUG: NODE_URL being used is: {os.getenv('NODE_URL')}")
-    logging.info("--- بدأ تشغيل بوت صياد الدرر (v9.0 نسخة Web3 v7+) ---")
-    
+    logging.info("--- بدأ تشغيل بوت صياد الدرر (v10.0 نسخة Web3) ---")
+
     bot_state = {
-        'is_paused': False, 'DEBUG_MODE': os.getenv('DEBUG_MODE', 'False').lower() in ('true', '1', 't'),
+        'is_paused': False,
+        'DEBUG_MODE': os.getenv('DEBUG_MODE', 'False').lower() in ('true', '1', 't'),
         'BUY_AMOUNT_BNB': float(os.getenv('BUY_AMOUNT_BNB', '0.01')),
         'GAS_PRICE_TIP_GWEI': int(os.getenv('GAS_PRICE_TIP_GWEI', '1')),
-        'SLIPPAGE_LIMIT': int(os.getenv('SLIPPAGE_LIMIT', '49')), 'GAS_LIMIT': int(os.getenv('GAS_LIMIT', '600000')),
+        'SLIPPAGE_LIMIT': int(os.getenv('SLIPPAGE_LIMIT', '49')),
+        'GAS_LIMIT': int(os.getenv('GAS_LIMIT', '600000')),
         'MINIMUM_LIQUIDITY_BNB': float(os.getenv('MINIMUM_LIQUIDITY_BNB', '5.0')),
         'TAKE_PROFIT_THRESHOLD_1': int(os.getenv('TAKE_PROFIT_THRESHOLD_1', '100')),
         'SELL_PERCENTAGE_1': int(os.getenv('SELL_PERCENTAGE_1', '50')),
@@ -583,40 +589,36 @@ async def main():
         'STOP_LOSS_THRESHOLD': int(os.getenv('STOP_LOSS_THRESHOLD', '-50')),
     }
     
+    w3 = None
     try:
-        if NODE_URL and NODE_URL.startswith("wss://"):
-            logging.info("🔌 الاتصال باستخدام المزود البديل والمستقر (Persistent Provider)...")
-            # --- ✅✅✅ الحل النهائي: استخدام مزود الاتصال البديل والأكثر قوة ---
-            provider = PersistentWebSocketProvider(NODE_URL)
-            # -------------------------------------------------------------------
-            w3 = AsyncWeb3(provider)
-            # هذا المزود لا يتصل فوراً، لذا سننتظر قليلاً ونتحقق
-            await asyncio.sleep(5) # انتظر 5 ثوانٍ لإتاحة فرصة للاتصال
-            if not await w3.is_connected():
-                 raise Exception("فشل الاتصال حتى باستخدام المزود البديل.")
-
-        elif NODE_URL:
-            logging.info("📡 الاتصال باستخدام HTTP...")
-            provider = AsyncWeb3.HTTPProvider(NODE_URL)
-            w3 = AsyncWeb3(provider)
-            if not await w3.is_connected():
-                 raise Exception("فشل اتصال HTTP!")
+        # --- طريقة الاتصال البسيطة والنظيفة ---
+        logging.info(f"محاولة الاتصال بـ: {NODE_URL}")
+        if NODE_URL.startswith("wss://"):
+            provider = AsyncWeb3.WebSocketProvider(NODE_URL)
         else:
-            logging.critical("❌ متغير NODE_URL غير موجود أو فارغ.")
-            return
+            provider = AsyncWeb3.HTTPProvider(NODE_URL)
+        
+        w3 = AsyncWeb3(provider)
+        
+        # --- الاختبار الحقيقي للاتصال ---
+        block_number = await asyncio.wait_for(w3.eth.block_number, timeout=15)
+        logging.info(f"✅✅✅ تم الاتصال بالشبكة بنجاح! رقم البلوك الحالي: {block_number} ✅✅✅")
 
+    except asyncio.TimeoutError:
+        logging.critical("❌❌❌ فشل الاتصال (Timeout). تأكد من صحة الرابط وأن الخادم يسمح بالاتصال.")
+        return # الخروج من البرنامج إذا فشل الاتصال
     except Exception as e:
-        logging.critical(f"❌ حدث خطأ فادح أثناء محاولة الاتصال بالـ Node: {e}")
-        return
+        logging.critical(f"❌❌❌ حدث خطأ فادح أثناء الاتصال: {e}", exc_info=True)
+        return # الخروج من البرنامج إذا فشل الاتصال
 
-    logging.info("✅✅✅✅✅✅✅  نجح الاتصال  ✅✅✅✅✅✅✅")
-
-    # --- باقي الكود يبقى كما هو تماماً ---
+    # --- باقي البرنامج يعمل فقط إذا نجح الاتصال ---
     nonce_manager = مدير_الـNonce(w3, WALLET_ADDRESS)
     await nonce_manager.initialize()
+    
     guardian = الحارس(w3, nonce_manager, None, bot_state)
     telegram_interface = واجهة_التليجرام(TELEGRAM_BOT_TOKEN, TELEGRAM_ADMIN_CHAT_ID, bot_state, guardian)
     guardian.telegram = telegram_interface
+
     watcher = الراصد(w3, telegram_interface)
     verifier = المدقق(w3, telegram_interface, bot_state)
     sniper = القناص(w3, nonce_manager, telegram_interface, bot_state)
@@ -625,17 +627,19 @@ async def main():
         asyncio.create_task(process_new_token(pair, token, verifier, sniper, guardian, bot_state, telegram_interface))
 
     logging.info("🚀 البوت جاهز على خط الانطلاق...")
+    
     telegram_task = asyncio.create_task(telegram_interface.run())
     guardian_task = asyncio.create_task(guardian.monitor_trades())
     watcher_task = asyncio.create_task(watcher.استمع_للمجمعات_الجديدة(new_pool_handler))
     health_check_task = asyncio.create_task(watcher.check_connection_periodically())
+    
     await asyncio.gather(telegram_task, guardian_task, watcher_task, health_check_task)
-  
+
+
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
         logging.info("\n--- تم إيقاف البوت يدويًا ---")
     except Exception:
-        logging.critical(f"❌ خطأ فادح في البرنامج الرئيسي:", exc_info=True)
-
+        logging.critical(f"❌ خطأ فادح وغير متوقع في البرنامج الرئيسي:", exc_info=True)
