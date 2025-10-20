@@ -280,8 +280,8 @@ class مدير_الـNonce:
         with open(self.filename, 'w') as f: f.write(str(nonce_to_save))
     async def initialize(self):
         async with self.lock:
-            # --- التعديل: تم حذف await ---
-            chain_nonce = self.w3.eth.get_transaction_count(self.address)
+            # --- التعديل النهائي: أعدنا await إلى مكانها الصحيح ---
+            chain_nonce = await self.w3.eth.get_transaction_count(self.address)
             file_nonce = self._read_from_file()
             self.nonce = max(chain_nonce, file_nonce)
             self._save_to_file(self.nonce)
@@ -292,7 +292,6 @@ class مدير_الـNonce:
             self.nonce += 1
             self._save_to_file(self.nonce)
             return current_nonce
-
 class الراصد:
     def __init__(self, w3: AsyncWeb3, telegram_interface: "واجهة_التليجرام"):
         self.w3 = w3
