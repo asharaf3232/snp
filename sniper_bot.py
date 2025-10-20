@@ -1,5 +1,5 @@
 # =================================================================
-# صياد الدرر: v11.0 (الإصلاح البرمجي الصحيح والنهائي)
+# صياد الدرر: v12.0 (الإصلاح الإملائي الصحيح والنهائي)
 # =================================================================
 
 import os
@@ -13,10 +13,10 @@ from dotenv import load_dotenv
 load_dotenv() # التحميل أولاً
 
 from web3 import Web3, AsyncWeb3
-# --- ✅✅✅ [الإصلاح الحقيقي] استيراد الـ Providers بالطريقة الصحيحة ✅✅✅ ---
-from web3.providers.websocket import AsyncWebSocketProvider
+# --- ✅✅✅ [الإصلاح الحقيقي] استيراد الـ Providers بالاسم الصحيح (s صغيرة) ✅✅✅ ---
+from web3.providers.websocket import AsyncWebsocketProvider
 from web3.providers.http import AsyncHTTPProvider
-# -------------------------------------------------------------------------
+# --------------------------------------------------------------------------------
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import (Application, CommandHandler, CallbackQueryHandler,
@@ -60,20 +60,12 @@ PAIR_ABI = json.loads('[{"constant":true,"inputs":[],"name":"getReserves","outpu
 ROUTER_ABI = json.loads('[{"inputs":[{"internalType":"uint256","name":"amountIn","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"}],"name":"getAmountsOut","outputs":[{"internalType":"uint256[]","name":"amounts","type":"uint256[]"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"amountOutMin","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"swapExactETHForTokens","outputs":[{"internalType":"uint256[]","name":"amounts","type":"uint256[]"}],"stateMutability":"payable","type":"function"},{"inputs":[{"internalType":"uint256","name":"amountIn","type":"uint256"},{"internalType":"uint256","name":"amountOutMin","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"swapExactTokensForETHSupportingFeeOnTransferTokens","outputs":[],"stateMutability":"nonpayable","type":"function"}]')
 ERC20_ABI = json.loads('[{"constant":true,"inputs":[],"name":"decimals","outputs":[{"name":"","type":"uint8"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"_spender","type":"address"},{"name":"_value","type":"uint256"}],"name":"approve","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[{"name":"_owner","type":"address"}],"name":"balanceOf","outputs":[{"name":"balance","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"}]')
 
-# ... (باقي الكود الخاص بالتليجرام والوحدات الأخرى يبقى كما هو)
-# ... (للاختصار، سأضع دالة main مباشرة، باقي الكود لم يتغير)
+
 # =================================================================
-# 4. فئة واجهة التليجرام (لا تغيير هنا)
-# ...
-# 5. الوحدات الأساسية (لا تغيير هنا)
-# ...
-
-# (الرجاء نسخ الكلاسات الكاملة من الكود السابق: واجهة_التليجرام, مدير_الـNonce, الراصد, المدقق, القناص, الحارس)
-# (للتأكد من عدم وجود أخطاء، سأقوم بإدراجها بالكامل أدناه)
-
+# الكود التالي لا يحتاج أي تغيير، هو فقط موجود ليكتمل الملف
+# =================================================================
 (SELECTING_SETTING, TYPING_VALUE) = range(2)
 class واجهة_التليجرام:
-    # ... (انسخ الكلاس بالكامل من الكود السابق)
     def __init__(self, token, admin_id, bot_state, guardian_ref):
         self.application = Application.builder().token(token).build()
         self.admin_id = admin_id
@@ -201,13 +193,11 @@ class واجهة_التليجرام:
         await self.start(update.message,context)
         return ConversationHandler.END
     async def run(self):
-        await self.send_message("✅ <b>تم تشغيل بوت صياد الدرر (v11.0) بنجاح!</b>")
+        await self.send_message("✅ <b>تم تشغيل بوت صياد الدرر (v12.0) بنجاح!</b>")
         await self.application.initialize()
         await self.application.start()
         await self.application.updater.start_polling()
-
 class مدير_الـNonce:
-    # ... (انسخ الكلاس بالكامل من الكود السابق)
     def __init__(self,w3:AsyncWeb3,address:str,filename="nonce.txt"):
         self.w3=w3
         self.address=Web3.to_checksum_address(address)
@@ -233,9 +223,7 @@ class مدير_الـNonce:
             self.nonce+=1
             self._save_to_file(self.nonce)
             return current_nonce
-
 class الراصد:
-    # ... (انسخ الكلاس بالكامل من الكود السابق)
     def __init__(self,w3:AsyncWeb3,telegram_interface:"واجهة_التليجرام"):
         self.w3=w3
         self.telegram=telegram_interface
@@ -249,10 +237,10 @@ class الراصد:
                 logging.info(f"❤️ [نبض القلب] الاتصال بالشبكة سليم. آخر بلوك: {block_number}")
             except asyncio.TimeoutError:
                 logging.critical("🚨 [فحص صحي] فشل الاتصال بالشبكة (انتهت المهلة).")
-                await self.telegram.send_message("🚨 <b>انقطاع الاتصال!</b> 🚨\n\nفشل الاتصال بعقدة البلوك تشين (انتهت المهلة). سيستمر البوت في محاولة إعادة الاتصال تلقائياً.")
+                await self.telegram.send_message("🚨 <b>انقطاع الاتصال!</b> 🚨\n\nفشل الاتصال بعقدة البلوك تشين (انتهت المهلة).")
             except Exception as e:
                 logging.critical(f"🚨 [فحص صحي] خطأ فادح في الاتصال بالشبكة: {e}")
-                await self.telegram.send_message(f"🚨 <b>انقطاع الاتصال!</b> 🚨\n\nحدث خطأ فادح في الاتصال: {e}\n\nسيستمر البوت في محاولة إعادة الاتصال تلقائياً.")
+                await self.telegram.send_message(f"🚨 <b>انقطاع الاتصال!</b> 🚨\n\nحدث خطأ فادح في الاتصال: {e}")
     async def استمع_للمجمعات_الجديدة(self,handler_func:callable):
         event_filter=await self.factory_contract.events.PairCreated.create_filter(from_block='latest')
         logging.info("👂 بدء الاستماع لحدث PairCreated...")
@@ -276,15 +264,13 @@ class الراصد:
                 else:
                     await asyncio.sleep(10)
             await asyncio.sleep(2)
-
 class المدقق:
-    # ... (انسخ الكلاس بالكامل من الكود السابق)
     def __init__(self,w3:AsyncWeb3,telegram_interface:"واجهة_التليجرام",bot_state:Dict):
         self.w3=w3
         self.router_contract=self.w3.eth.contract(address=Web3.to_checksum_address(ROUTER_ADDRESS),abi=ROUTER_ABI)
         self.telegram=telegram_interface
         self.bot_state=bot_state
-        logging.info("✅ المدقق جاهز (مع فلترة سيولة ومحاكاة بيع).")
+        logging.info("✅ المدقق جاهز.")
     async def فحص_أولي_سريع(self,pair_address:str)->Tuple[bool,float]:
         logging.info(f"   [فحص سريع] التحقق من سيولة المجمع: {pair_address}")
         try:
@@ -310,7 +296,7 @@ class المدقق:
             return True,"العملة قابلة للبيع"
         except Exception as e:
             error_message=str(e)
-            logging.warning(f"   [محاكاة البيع] 🚨🚨🚨 فشلت المحاكاة! على الأغلب Honeypot. الخطأ: {error_message}")
+            logging.warning(f"   [محاكاة البيع] 🚨 Honeypot محتمل. الخطأ: {error_message}")
             return False,error_message
     async def فحص_شامل(self,pair_address:str,token_address:str)->Tuple[bool,str]:
         liquidity_passed,wbnb_reserve=await self.فحص_أولي_سريع(pair_address)
@@ -320,9 +306,7 @@ class المدقق:
         if not sell_sim_passed:
             return False,f"فخ عسل (Honeypot) - {error_msg}"
         return True,"اجتاز كل الفحوصات"
-
 class القناص:
-    # ... (انسخ الكلاس بالكامل من الكود السابق)
     def __init__(self,w3:AsyncWeb3,nonce_manager:"مدير_الـNonce",telegram_interface:"واجهة_التليجرام",bot_state:Dict):
         self.w3=w3
         self.nonce_manager=nonce_manager
@@ -330,13 +314,13 @@ class القناص:
         self.bot_state=bot_state
         self.router_contract=self.w3.eth.contract(address=Web3.to_checksum_address(ROUTER_ADDRESS),abi=ROUTER_ABI)
         self.account=self.w3.eth.account.from_key(PRIVATE_KEY)
-        logging.info("✅ القناص جاهز (مع غاز ديناميكي).")
+        logging.info("✅ القناص جاهز.")
     async def _get_dynamic_gas(self)->int:
         base_price=await self.w3.eth.gas_price
         tip=Web3.to_wei(self.bot_state['GAS_PRICE_TIP_GWEI'],'gwei')
         return base_price+tip
     async def _approve_max(self,token_address:str):
-        logging.info(f"   [موافقة] جاري عمل Approve لكمية لا نهائية لـ {token_address}...")
+        logging.info(f"   [موافقة] جاري عمل Approve لـ {token_address}...")
         try:
             checksum_token=Web3.to_checksum_address(token_address)
             token_contract=self.w3.eth.contract(address=checksum_token,abi=ERC20_ABI)
@@ -377,9 +361,7 @@ class القناص:
         except Exception:
             logging.exception(f"❌ خطأ في تنفيذ الشراء:")
             return{"success":False}
-
 class الحارس:
-    # ... (انسخ الكلاس بالكامل من الكود السابق)
     def __init__(self,w3:AsyncWeb3,nonce_manager:"مدير_الـNonce",telegram_interface:"واجهة_التليجرام",bot_state:Dict):
         self.w3=w3
         self.nonce_manager=nonce_manager
@@ -388,7 +370,7 @@ class الحارس:
         self.router_contract=self.w3.eth.contract(address=Web3.to_checksum_address(ROUTER_ADDRESS),abi=ROUTER_ABI)
         self.account=self.w3.eth.account.from_key(PRIVATE_KEY)
         self.active_trades:List[Dict]=[]
-        logging.info("✅ الحارس المحصّن مستيقظ ويراقب...")
+        logging.info("✅ الحارس مستيقظ ويراقب...")
     def add_trade(self,trade_details:Dict):
         trade={"token_address":trade_details["token_address"],"buy_price":trade_details["buy_price"],"initial_amount_wei":trade_details["amount_bought_wei"],"remaining_amount_wei":trade_details["amount_bought_wei"],"decimals":trade_details["decimals"],"tp1_triggered":False,"tp2_triggered":False,"current_profit":0}
         self.active_trades.append(trade)
@@ -460,9 +442,6 @@ class الحارس:
                     if await self._execute_sell(trade,trade['remaining_amount_wei']):self.active_trades.remove(trade)
             await asyncio.sleep(5)
 
-# =================================================================
-# 6. البرنامج الرئيسي ونقطة الانطلاق
-# =================================================================
 async def process_new_token(pair_address, token_address, verifier, sniper, guardian, bot_state, telegram_if):
     if bot_state['is_paused']:
         return
@@ -478,8 +457,11 @@ async def process_new_token(pair_address, token_address, verifier, sniper, guard
         if bot_state.get('DEBUG_MODE', False):
               await telegram_if.send_message(f"⚪️ <b>تم تجاهل عملة</b>\n\n<code>{token_address}</code>\n\n<b>السبب:</b> {reason}")
 
+# =================================================================
+# 6. البرنامج الرئيسي ونقطة الانطلاق (النسخة النهائية والصحيحة)
+# =================================================================
 async def main():
-    logging.info("--- بدأ تشغيل بوت صياد الدرر (v11.0 نسخة Web3) ---")
+    logging.info("--- بدأ تشغيل بوت صياد الدرر (v12.0 نسخة Web3) ---")
     bot_state = {
         'is_paused': False, 'DEBUG_MODE': os.getenv('DEBUG_MODE', 'False').lower() in ('true', '1', 't'),
         'BUY_AMOUNT_BNB': float(os.getenv('BUY_AMOUNT_BNB', '0.01')),
@@ -497,8 +479,8 @@ async def main():
     try:
         logging.info(f"محاولة الاتصال بـ: {NODE_URL}")
         if NODE_URL.startswith("wss://"):
-            # --- ✅✅✅ [الإصلاح الحقيقي] إنشاء الـ Provider ككائن منفصل ✅✅✅ ---
-            provider = AsyncWebSocketProvider(NODE_URL)
+            # --- ✅✅✅ [الإصلاح الحقيقي] إنشاء الـ Provider ككائن منفصل باستخدام الاسم الصحيح ✅✅✅ ---
+            provider = AsyncWebsocketProvider(NODE_URL)
         else:
             provider = AsyncHTTPProvider(NODE_URL)
         
@@ -512,6 +494,7 @@ async def main():
     except Exception as e:
         logging.critical(f"❌❌❌ حدث خطأ فادح أثناء الاتصال: {e}", exc_info=True)
         return
+        
     nonce_manager = مدير_الـNonce(w3, WALLET_ADDRESS)
     await nonce_manager.initialize()
     guardian = الحارس(w3, nonce_manager, None, bot_state)
