@@ -1,5 +1,5 @@
 # =================================================================
-# صياد الدرر: v5.5 (النسخة النهائية والمستقرة)
+# صياد الدرر: v5.6 (النسخة النهائية والموثقة)
 # =================================================================
 import os
 import json
@@ -9,9 +9,9 @@ import logging
 from typing import Dict, List, Any, Tuple
 
 from dotenv import load_dotenv
-# --- التعديل النهائي والصحيح 100% ---
+# --- التعديل النهائي والصحيح 100% المبني على البحث ---
 from web3 import AsyncWeb3, Web3
-from web3.auto import AsyncAutoProvider # <-- الاستيراد الصحيح والنهائي
+from web3.providers.websocket import WebsocketProviderV2
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import (Application, CommandHandler, CallbackQueryHandler, 
@@ -257,7 +257,7 @@ class واجهة_التليجرام:
 
 
     async def run(self):
-        await self.send_message("✅ <b>تم تشغيل بوت صياد الدرر (v5.5) بنجاح!</b>")
+        await self.send_message("✅ <b>تم تشغيل بوت صياد الدرر (v5.6) بنجاح!</b>")
         await self.application.initialize()
         await self.application.start()
         await self.application.updater.start_polling()
@@ -582,7 +582,7 @@ async def process_new_token(pair_address, token_address, verifier, sniper, guard
              await telegram_if.send_message(f"⚪️ <b>تم تجاهل عملة</b>\n\n<code>{token_address}</code>\n\n<b>السبب:</b> {reason}")
 
 async def main():
-    logging.info("--- بدأ تشغيل بوت صياد الدرر (v5.5 - النسخة النهائية والمستقرة) ---")
+    logging.info("--- بدأ تشغيل بوت صياد الدرر (v5.6 - النسخة النهائية والموثقة) ---")
     
     bot_state = {
         'is_paused': False,
@@ -600,8 +600,7 @@ async def main():
     }
     
     # --- الطريقة الصحيحة والنهائية التي تعالج الخطأ الأخير ---
-    provider = AsyncAutoProvider(NODE_URL)
-    w3 = AsyncWeb3(provider)
+    w3 = AsyncWeb3(WebsocketProviderV2(NODE_URL))
 
     if not await w3.is_connected():
         logging.critical("❌ لا يمكن الاتصال بالشبكة (WSS) عند البدء. تأكد من صحة NODE_URL. يتم الخروج."); return
