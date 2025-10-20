@@ -11,6 +11,7 @@ from typing import Dict, List, Any, Tuple
 import websockets
 from dotenv import load_dotenv
 from web3 import Web3, AsyncWeb3
+from web3.providers.persistent import PersistentWebSocketProvider
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import (Application, CommandHandler, CallbackQueryHandler, 
                           ContextTypes, ConversationHandler, MessageHandler, filters)
@@ -584,18 +585,17 @@ async def main():
     
     try:
         if NODE_URL and NODE_URL.startswith("wss://"):
-            logging.info("🔌 الاتصال بالطريقة اليدوية القوية...")
-            # --- ✅ الحل الجذري: إنشاء الاتصال يدوياً ثم تسليمه لـ web3.py ---
-            connection = await websockets.connect(NODE_URL)
-            provider = AsyncWeb3.WebSocketProvider.from_existing(connection)
+            logging.info("🔌 الاتصال باستخدام المزود البديل والمستقر (Persistent Provider)...")
+            # --- ✅✅✅ الحل النهائي: استخدام مزود الاتصال البديل والأكثر قوة ---
+            provider = PersistentWebSocketProvider(NODE_URL)
             # -------------------------------------------------------------------
             w3 = AsyncWeb3(provider)
-            # بما أن الاتصال تم يدوياً بنجاح، is_connected ستكون true
+            # هذا المزود لا يتصل فوراً، لذا سننتظر قليلاً ونتحقق
+            await asyncio.sleep(5) # انتظر 5 ثوانٍ لإتاحة فرصة للاتصال
             if not await w3.is_connected():
-                 raise Exception("فشل الاتصال حتى بالطريقة اليدوية!")
+                 raise Exception("فشل الاتصال حتى باستخدام المزود البديل.")
 
         elif NODE_URL:
-            # (هذا الجزء يبقى كما هو لحالات HTTP)
             logging.info("📡 الاتصال باستخدام HTTP...")
             provider = AsyncWeb3.HTTPProvider(NODE_URL)
             w3 = AsyncWeb3(provider)
@@ -609,7 +609,7 @@ async def main():
         logging.critical(f"❌ حدث خطأ فادح أثناء محاولة الاتصال بالـ Node: {e}")
         return
 
-    logging.info("✅✅✅ نجح الاتصال أخيراً! تم تجاوز المشكلة. ✅✅✅")
+    logging.info("✅✅✅✅✅✅✅  نجح الاتصال  ✅✅✅✅✅✅✅")
 
     # --- باقي الكود يبقى كما هو تماماً ---
     nonce_manager = مدير_الـNonce(w3, WALLET_ADDRESS)
