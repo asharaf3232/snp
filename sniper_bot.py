@@ -1,5 +1,5 @@
 # =================================================================
-# صياد الدرر: v5.9 (النسخة النهائية والمصححة)
+# صياد الدرر: v6.0 (النسخة النظيفة والمستقرة)
 # =================================================================
 import os
 import json
@@ -11,12 +11,17 @@ from typing import Dict, List, Any, Tuple
 from dotenv import load_dotenv
 # --- التعديلات النهائية لتوافق web3 v6 ---
 from web3 import AsyncWeb3
-from web3.middleware.geth_poa import geth_poa_middleware # <-- السطر الصحيح لـ v6
-from web3.providers import WebsocketProvider
+from web3.middleware.geth_poa import geth_poa_middleware
+from web3.providers import WebsocketProvider # لاحظ حرف s الصغير
+
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import (Application, CommandHandler, CallbackQueryHandler,
                           ContextTypes, ConversationHandler, MessageHandler, filters)
 from telegram.constants import ParseMode
+
+# ... (بقية الكود من هنا إلى دالة main لا يتغير)
+# ... (يمكنك نسخ ولصق الكود من ملفك القديم هنا)
+# ... (أو سأقوم بلصق النسخة الكاملة إذا أردت)
 
 # =================================================================
 # 1. نظام التسجيل (Logging)
@@ -257,7 +262,7 @@ class واجهة_التليجرام:
 
 
     async def run(self):
-        await self.send_message("✅ <b>تم تشغيل بوت صياد الدرر (v5.9) بنجاح!</b>")
+        await self.send_message("✅ <b>تم تشغيل بوت صياد الدرر (v6.0) بنجاح!</b>")
         await self.application.initialize()
         await self.application.start()
         await self.application.updater.start_polling()
@@ -280,7 +285,7 @@ class مدير_الـNonce:
         with open(self.filename, 'w') as f: f.write(str(nonce_to_save))
     async def initialize(self):
         async with self.lock:
-            # --- التعديل: w3.eth.get_transaction_count هي async ---
+            # --- التعديل النهائي: أعدنا await إلى مكانها الصحيح ---
             chain_nonce = await self.w3.eth.get_transaction_count(self.address)
             file_nonce = self._read_from_file()
             self.nonce = max(chain_nonce, file_nonce)
@@ -528,6 +533,7 @@ class الحارس:
                     logging.warning(f"🛑 [الحارس] تفعيل وقف الخسارة لـ {trade['token_address']}")
                     if await self._execute_sell(trade, trade['remaining_amount_wei']): self.active_trades.remove(trade)
             await asyncio.sleep(5)
+
 # =================================================================
 # 6. البرنامج الرئيسي ونقطة الانطلاق (محسّن)
 # =================================================================
@@ -567,7 +573,7 @@ async def main():
         'STOP_LOSS_THRESHOLD': int(os.getenv('STOP_LOSS_THRESHOLD', '-50')),
     }
 
-    provider = WebsocketProvider(NODE_URL)
+    provider = WebsocketProvider(NODE_URL) # لاحظ حرف s الصغير
     w3 = AsyncWeb3(provider)
     # --- استخدام Middleware الصحيح لـ v6 ---
     w3.middleware_onion.inject(geth_poa_middleware, layer=0)
@@ -575,7 +581,7 @@ async def main():
     logging.info("⏳ جاري تأسيس الاتصال بالشبكة...")
     await asyncio.sleep(2) # تأخير بسيط يساعد على استقرار الاتصال الأولي
 
-    if not w3.is_connected():
+    if not w3.is_connected(): # لاحظ: بدون await
         logging.critical("❌ فشل الاتصال بالشبكة (WSS). تأكد من صحة NODE_URL. يتم الخروج."); return
 
     logging.info("✅ تم تأسيس الاتصال بالشبكة بنجاح!")
@@ -602,6 +608,7 @@ async def main():
     health_check_task = asyncio.create_task(watcher.check_connection_periodically())
 
     await asyncio.gather(telegram_task, guardian_task, watcher_task, health_check_task)
+
 
 if __name__ == "__main__":
     try:
