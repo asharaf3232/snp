@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 # --- التعديلات النهائية لتوافق web3 v6 ---
 from web3 import AsyncWeb3
 from web3.middleware.geth_poa import geth_poa_middleware
-from web3.providers.websocket import AsyncWebsocketProvider # <-- الإصلاح هنا
+from web3.providers.websocket import WebsocketProviderV2 # <-- الإصلاح الصحيح
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import (Application, CommandHandler, CallbackQueryHandler,
@@ -655,7 +655,7 @@ async def main():
 
    
 
-    provider = AsyncWebsocketProvider(NODE_URL) # <-- الإصلاح هنا
+    provider = WebsocketProviderV2(NODE_URL) # <-- الإصلاح الصحيح
     w3 = AsyncWeb3(provider)
     # --- استخدام Middleware الصحيح لـ v6 ---
     w3.middleware_onion.inject(geth_poa_middleware, layer=0)
