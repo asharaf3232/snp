@@ -609,8 +609,9 @@ async def main():
         'STOP_LOSS_THRESHOLD': int(os.getenv('STOP_LOSS_THRESHOLD', '-50')),
     }
     
-    # --- تعديل حاسم: استخدام AsyncWebsocketProvider ---
-    w3 = AsyncWeb3(AsyncWeb3.AsyncWSSProvider(NODE_URL))
+    # --- تعديل حاسم ونهائي: الطريقة الصحيحة لإنشاء الاتصال ---
+    provider = AsyncWSSProvider(NODE_URL)
+    w3 = AsyncWeb3(provider)
 
     if not await w3.is_connected():
         logging.critical("❌ لا يمكن الاتصال بالشبكة (WSS) عند البدء. تأكد من صحة NODE_URL. يتم الخروج."); return
