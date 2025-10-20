@@ -7,7 +7,7 @@ import time
 import asyncio
 import logging
 from typing import Dict, List, Any, Tuple
-
+from web3.providers.websocket import AsyncWebsocketProvider
 from dotenv import load_dotenv
 # --- التعديل النهائي 1: استيراد الـ Middleware الصحيح ---
 from web3.middleware.proof_of_authority import ExtraDataToPOAMiddleware
@@ -598,7 +598,7 @@ async def main():
     }
 
     # --- الحل النهائي 3: طريقة الاتصال الصحيحة 100% ---
-    provider = AsyncWeb3.AsyncWebsocketProvider(NODE_URL)
+    provider = AsyncWebsocketProvider(NODE_URL)
     w3 = AsyncWeb3(provider)
     w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
 
