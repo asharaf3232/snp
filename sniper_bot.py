@@ -600,10 +600,15 @@ async def main():
     provider = WebSocketProvider(NODE_URL, websocket_kwargs={'ping_timeout': 30})
     w3 = AsyncWeb3(provider)
     w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
+    
+    # --- التعديل الأخير والنهائي: نعطي الاتصال فرصة للبدء ثم نتحقق منه ---
+    logging.info("⏳ جاري تأسيس الاتصال بالشبكة...")
+    await asyncio.sleep(5) # انتظر 5 ثوانٍ للسماح للاتصال بالاستقرار
 
+    if not await w3.is_connected():
+        logging.critical("❌ فشل الاتصال بالشبكة (WSS) بعد فترة الانتظار. تأكد من صحة NODE_URL. يتم الخروج."); return
 
-    #if not await w3.is_connected():
-        #logging.critical("❌ لا يمكن الاتصال بالشبكة (WSS) عند البدء. تأكد من صحة NODE_URL. يتم الخروج."); return
+    logging.info("✅ تم تأسيس الاتصال بالشبكة بنجاح!")
 
     nonce_manager = مدير_الـNonce(w3, WALLET_ADDRESS)
     await nonce_manager.initialize()
