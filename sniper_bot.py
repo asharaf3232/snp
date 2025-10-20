@@ -9,14 +9,14 @@ import logging
 from typing import Dict, List, Any, Tuple
 
 from dotenv import load_dotenv
-# --- التعديل الرئيسي: استخدام WebsocketProvider ---
+# --- التعديل الرئيسي والنهائي: استخدام WebsocketProvider ---
 from web3 import Web3, AsyncWeb3
-# تم حذف السطر الخاطئ من هنا
+from web3.providers.websocket import AsyncWSSProvider # <-- هذا هو السطر الصحيح والنهائي
+
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import (Application, CommandHandler, CallbackQueryHandler, 
                           ContextTypes, ConversationHandler, MessageHandler, filters)
 from telegram.constants import ParseMode
-
 # =================================================================
 # 1. نظام التسجيل (Logging)
 # =================================================================
