@@ -603,7 +603,7 @@ async def main():
     logging.info("⏳ جاري تأسيس الاتصال بالشبكة...")
     await asyncio.sleep(2) # تأخير بسيط يساعد على استقرار الاتصال الأولي
 
-    if not await w3.is_connected():
+    if not w3.is_connected():
         logging.critical("❌ فشل الاتصال بالشبكة (WSS). تأكد من صحة NODE_URL. يتم الخروج."); return
 
     logging.info("✅ تم تأسيس الاتصال بالشبكة بنجاح!")
