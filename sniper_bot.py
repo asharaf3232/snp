@@ -602,8 +602,8 @@ async def main():
     w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
 
 
-    if not await w3.is_connected():
-        logging.critical("❌ لا يمكن الاتصال بالشبكة (WSS) عند البدء. تأكد من صحة NODE_URL. يتم الخروج."); return
+    #if not await w3.is_connected():
+        #logging.critical("❌ لا يمكن الاتصال بالشبكة (WSS) عند البدء. تأكد من صحة NODE_URL. يتم الخروج."); return
 
     nonce_manager = مدير_الـNonce(w3, WALLET_ADDRESS)
     await nonce_manager.initialize()
