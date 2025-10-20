@@ -7,13 +7,12 @@ import time
 import asyncio
 import logging
 from typing import Dict, List, Any, Tuple
-from web3.providers.websocket import AsyncWebsocketProvider
-from dotenv import load_dotenv
-# --- التعديل النهائي 1: استيراد الـ Middleware الصحيح ---
-from web3.middleware.proof_of_authority import ExtraDataToPOAMiddleware
-# --- التعديل النهائي 2: استيراد الـ Provider الصحيح ---
-from web3 import AsyncWeb3
 
+from dotenv import load_dotenv
+# --- التعديلات النهائية المبنية على الاستكشاف ---
+from web3 import AsyncWeb3
+from web3.middleware.proof_of_authority import ExtraDataToPOAMiddleware
+from web3.providers import WebSocketProvider # <-- هذا هو السطر الصحيح
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import (Application, CommandHandler, CallbackQueryHandler,
@@ -597,8 +596,8 @@ async def main():
         'STOP_LOSS_THRESHOLD': int(os.getenv('STOP_LOSS_THRESHOLD', '-50')),
     }
 
-    # --- الحل النهائي 3: طريقة الاتصال الصحيحة 100% ---
-    provider = AsyncWebsocketProvider(NODE_URL)
+    # --- الحل النهائي المبني على الدليل القاطع ---
+    provider = WebSocketProvider(NODE_URL)
     w3 = AsyncWeb3(provider)
     w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
 
