@@ -655,22 +655,22 @@ async def main():
         'STOP_LOSS_THRESHOLD': int(os.getenv('STOP_LOSS_THRESHOLD', '-50')),
     }
 
-    # --- الحل النهائي: إنشاء اتصال SSL بدون تحقق (للتشخيص) ---
-    ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-    ssl_context.check_hostname = False
-    ssl_context.verify_mode = ssl.CERT_NONE
+    # --- تعديل لتجاوز التحقق من SSL (للتشخيص) ---
+    ssl_context = ssl._create_unverified_context()
     provider = WebsocketProviderV2(NODE_URL, websocket_kwargs={'ssl': ssl_context})
-    # --- نهاية الحل ---
+    # --- نهاية التعديل ---
     
     w3 = AsyncWeb3(provider)
     
+    # --- استخدام Middleware الصحيح لـ v6 ---
     w3.middleware_onion.inject(async_geth_poa_middleware, layer=0)
 
     logging.info("⏳ جاري تأسيس الاتصال بالشبكة...")
-    await asyncio.sleep(2)
+    # نعطي فرصة للاتصال ليتم قبل التحقق منه
+    await asyncio.sleep(5) 
 
     if not await w3.is_connected():
-        logging.critical("❌ فشل الاتصال بالشبكة. المشكلة قد تكون في توافق المكتبات."); return
+        logging.critical("❌ فشل الاتصال بالشبكة (WSS). تأكد من صحة NODE_URL وبيئة SSL. يتم الخروج."); return
 
     logging.info("✅ تم تأسيس الاتصال بالشبكة بنجاح!")
 
