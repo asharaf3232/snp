@@ -1,5 +1,5 @@
 # =================================================================
-# صياد الدرر: v5.4 (إصدار WebSocket الاحترافي)
+# صياد الدرر: v5.5 (النسخة النهائية والمستقرة)
 # =================================================================
 import os
 import json
@@ -9,13 +9,15 @@ import logging
 from typing import Dict, List, Any, Tuple
 
 from dotenv import load_dotenv
-# --- الكود الصحيح والنهائي ---
-from web3 import AsyncWeb3, Web3, AsyncWebsocketProvider
+# --- التعديل النهائي والصحيح 100% ---
+from web3 import AsyncWeb3, Web3
+from web3.auto import AsyncAutoProvider # <-- الاستيراد الصحيح والنهائي
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import (Application, CommandHandler, CallbackQueryHandler, 
                           ContextTypes, ConversationHandler, MessageHandler, filters)
 from telegram.constants import ParseMode
+
 # =================================================================
 # 1. نظام التسجيل (Logging)
 # =================================================================
@@ -62,8 +64,6 @@ logging.info("✅ تم تحميل الإعدادات المحصّنة بنجاح
 (SELECTING_SETTING, TYPING_VALUE) = range(2)
 
 class واجهة_التليجرام:
-    # ... الكود هنا لم يتغير، يمكنك نسخه بالكامل من ملفك القديم ...
-    # ... أو استخدام هذا الكود كما هو ...
     def __init__(self, token, admin_id, bot_state, guardian_ref):
         self.application = Application.builder().token(token).build()
         self.admin_id = admin_id
@@ -77,7 +77,6 @@ class واجهة_التليجرام:
                 TYPING_VALUE: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.set_new_value)],
             },
             fallbacks=[CallbackQueryHandler(self.start_callback, pattern='^main_menu$')],
-            # إضافة per_message لإزالة التحذير
             per_message=True 
         )
 
@@ -110,7 +109,6 @@ class واجهة_التليجرام:
         chat_id = update.effective_chat.id
         if str(chat_id) != self.admin_id: return
         
-        # التأكد من وجود رسالة للرد عليها
         reply_target = update.message or update.callback_query.message
         
         await reply_target.reply_text(
@@ -122,7 +120,6 @@ class واجهة_التليجرام:
     async def start_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         query = update.callback_query
         await query.answer()
-        # تعديل الرسالة الحالية بدلاً من إرسال رسالة جديدة
         await query.edit_message_text(
             '<b>أهلاً بك في مركز قيادة صياد الدرر!</b>',
             reply_markup=self._get_main_keyboard(),
@@ -255,13 +252,12 @@ class واجهة_التليجرام:
         except (ValueError, KeyError):
             await update.message.reply_text("❌ قيمة غير صالحة. يرجى إدخال رقم صحيح.", reply_markup=self._get_main_keyboard())
 
-        # العودة إلى القائمة الرئيسية
         await self.start(update, context)
         return ConversationHandler.END
 
 
     async def run(self):
-        await self.send_message("✅ <b>تم تشغيل بوت صياد الدرر (v5.4) بنجاح!</b>")
+        await self.send_message("✅ <b>تم تشغيل بوت صياد الدرر (v5.5) بنجاح!</b>")
         await self.application.initialize()
         await self.application.start()
         await self.application.updater.start_polling()
@@ -270,7 +266,6 @@ class واجهة_التليجرام:
 # 5. الوحدات الأساسية (محسّنة)
 # =================================================================
 class مدير_الـNonce:
-    # ... لا تغيير هنا ...
     def __init__(self, w3: AsyncWeb3, address: str, filename="nonce.txt"):
         self.w3 = w3
         self.address = Web3.to_checksum_address(address)
@@ -318,11 +313,10 @@ class الراصد:
         while True:
             try:
                 logging.info("👂 [الراصد] يقوم بإنشاء فلتر أحداث جديد...")
-                # --- تعديل حاسم: استخدام fromBlock بدلاً من from_block ---
                 event_filter = await self.factory_contract.events.PairCreated.create_filter(fromBlock='latest')
                 logging.info("✅ [الراصد] تم إنشاء الفلتر بنجاح. بدء الاستماع...")
                 
-                while True: # حلقة داخلية للمعالجة
+                while True:
                     new_entries = await self.w3.eth.get_filter_changes(event_filter.filter_id)
                     for event in new_entries:
                         if 'args' in event:
@@ -339,7 +333,6 @@ class الراصد:
 
 
 class المدقق:
-    # ... لا تغيير هنا ...
     def __init__(self, w3: AsyncWeb3, telegram_interface: "واجهة_التليجرام", bot_state: Dict):
         self.w3 = w3
         self.router_contract = self.w3.eth.contract(address=ROUTER_ADDRESS, abi=ROUTER_ABI)
@@ -393,7 +386,6 @@ class المدقق:
         return True, "اجتاز كل الفحوصات"
 
 class القناص:
-    # ... لا تغيير هنا ...
     def __init__(self, w3: AsyncWeb3, nonce_manager: "مدير_الـNonce", telegram_interface: "واجهة_التليجرام", bot_state: Dict):
         self.w3 = w3
         self.nonce_manager = nonce_manager
@@ -471,7 +463,6 @@ class القناص:
             return {"success": False}
 
 class الحارس:
-    # ... لا تغيير هنا ...
     def __init__(self, w3: AsyncWeb3, nonce_manager: "مدير_الـNonce", telegram_interface: "واجهة_التليجرام", bot_state: Dict):
         self.w3 = w3
         self.nonce_manager = nonce_manager
@@ -591,7 +582,7 @@ async def process_new_token(pair_address, token_address, verifier, sniper, guard
              await telegram_if.send_message(f"⚪️ <b>تم تجاهل عملة</b>\n\n<code>{token_address}</code>\n\n<b>السبب:</b> {reason}")
 
 async def main():
-    logging.info("--- بدأ تشغيل بوت صياد الدرر (v5.4 - إصدار WebSocket) ---")
+    logging.info("--- بدأ تشغيل بوت صياد الدرر (v5.5 - النسخة النهائية والمستقرة) ---")
     
     bot_state = {
         'is_paused': False,
@@ -609,7 +600,7 @@ async def main():
     }
     
     # --- الطريقة الصحيحة والنهائية التي تعالج الخطأ الأخير ---
-    provider = AsyncWebsocketProvider(NODE_URL)
+    provider = AsyncAutoProvider(NODE_URL)
     w3 = AsyncWeb3(provider)
 
     if not await w3.is_connected():
@@ -637,6 +628,7 @@ async def main():
     health_check_task = asyncio.create_task(watcher.check_connection_periodically())
     
     await asyncio.gather(telegram_task, guardian_task, watcher_task, health_check_task)
+
 if __name__ == "__main__":
     try:
         asyncio.run(main())
